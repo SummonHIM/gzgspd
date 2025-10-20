@@ -1,0 +1,15 @@
+[Unit]
+Description=广州工商学院自动网络登录服务
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gzgspd --config /etc/gzgspd/config.json
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target
