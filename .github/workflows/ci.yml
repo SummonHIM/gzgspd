@@ -22,6 +22,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Set up environments
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          echo "OUTFILE=built/gzgspd-$RUNNER_OS.exe" > "$GITHUB_ENV"
+        else
+          echo "OUTFILE=built/gzgspd-$RUNNER_OS" > "$GITHUB_ENV"
+        fi
 
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -30,8 +38,12 @@ jobs:
 
     - name: Build
       run: |
-        chmod -v +x files/workflow/build.sh
-        files/workflow/build.sh
+        if [ ! -d "built" ]; then
+          mkdir -vp "built"
+        fi
+        for env in $BUILD_ENVS; do
+          export "$env"
+        done
         go build -o $OUTFILE -v .
       env:
         BUILD_ENVS: ${{ inputs.BUILD_ENVS }}
