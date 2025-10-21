@@ -39,6 +39,8 @@ type WorkerInstance struct {
 	LogoutUID    *string
 }
 
+var Version = "dev"
+
 func doLogin(instance *WorkerInstance) bool {
 	// 检查是否需要登录
 	slog.Debug(fmt.Sprintf("[%s] Checking portal if login is required.", instance.Username))
@@ -210,7 +212,7 @@ func worker(cfg src.ConfigInstance, quitSender <-chan struct{}, quitWaiter *sync
 	// 分析接口的IP
 	tLoginIf, tLoginIfIP, tMac, err := parseInterface(instance.Interface)
 	if err != nil {
-		slog.Error("[%s] Error parsing interface: %v", instance.Username, err)
+		slog.Error(fmt.Sprintf("[%s] Error parsing interface: %v", instance.Username, err))
 		return
 	} else {
 		instance.LoginIf = &tLoginIf
@@ -252,7 +254,7 @@ loop:
 				if now_if != *instance.LoginIf || now_ip != *instance.LoginIfIP {
 					tLoginIf, tLoginIfIP, tMac, err := parseInterface(instance.Interface)
 					if err != nil {
-						slog.Error("[%s] Error parsing interface: %v", instance.Username, err)
+						slog.Error(fmt.Sprintf("[%s] Error parsing interface: %v", instance.Username, err))
 					} else {
 						instance.LoginIf = &tLoginIf
 						instance.LoginIfIP = &tLoginIfIP
@@ -301,7 +303,7 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.Level(cfg.LogLevel),
 	})))
-	slog.Info("Starting GZGS portal daemon...")
+	slog.Info(fmt.Sprintf("Starting GZGS portal daemon (%s)...", Version))
 
 	// 监听终止命令
 	quitSender := make(chan struct{})

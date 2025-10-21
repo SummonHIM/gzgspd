@@ -40,13 +40,14 @@ jobs:
     - name: Build
       shell: bash
       run: |
+        VERSION="${GITHUB_REF#refs/tags/}"
         if [ ! -d "built" ]; then
           mkdir -vp "built"
         fi
         for env in $BUILD_ENVS; do
           export "$env"
         done
-        go build -o $OUTFILE -v .
+        go build -ldflags="-X 'main.Version=$VERSION'" -o $OUTFILE -v .
       env:
         BUILD_ENVS: ${{ inputs.BUILD_ENVS }}
 
