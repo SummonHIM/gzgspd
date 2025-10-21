@@ -235,9 +235,11 @@ func worker(cfg src.ConfigInstance, quitSender <-chan struct{}, quitWaiter *sync
 
 loop:
 	for {
+		quitSignal := false
 		select {
 		case <-quitSender:
 			// 收到退出信号
+			quitSignal = true
 			doLogout(instance)
 			break loop
 		default:
@@ -260,19 +262,23 @@ loop:
 				}
 			}
 
-			// 正常执行登录逻辑
-			if doLogin(instance) {
-				retry = 0
-			} else {
-				retry++
-			}
+			if !quitSignal {
+				// 正常执行登录逻辑
+				if doLogin(instance) {
+					retry = 0
+				} else {
+					retry++
+				}
 
-			// 达到最大错误次数，暂停 10 分钟
-			if instance.RetryMax != 0 && retry >= cfg.RetryMax {
-				slog.Error(fmt.Sprintf("[%s] reached max retries, stop 10 min.", instance.Username))
-				time.Sleep(time.Duration(10) * time.Minute)
+				// 达到最大错误次数，暂停 10 分钟
+				if instance.RetryMax != 0 && retry >= cfg.RetryMax {
+					slog.Error(fmt.Sprintf("[%s] reached max retries, stop 10 min.", instance.Username))
+					time.Sleep(time.Duration(10) * time.Minute)
+				} else {
+					time.Sleep(time.Duration(cfg.KeepAlive) * time.Second)
+				}
 			} else {
-				time.Sleep(time.Duration(cfg.KeepAlive) * time.Second)
+				slog.Debug(fmt.Sprintf("[%s] Quit signal received. Skip login.", instance.Username))
 			}
 		}
 	}
