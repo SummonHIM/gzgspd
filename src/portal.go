@@ -148,7 +148,10 @@ func PortalJsonAction(
 	req.Header.Set("Accept-Language", "zh-CN")
 
 	// 发起请求
-	client := NewHttpClientWithIface(ifname, 5*time.Second)
+	client, err := NewHttpClientWithIface(ifname, 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -221,7 +224,10 @@ func QuickAuth(
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
 
 	// 发起请求
-	client := NewHttpClientWithIface(ifname, 5*time.Second)
+	client, err := NewHttpClientWithIface(ifname, 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -283,7 +289,10 @@ func QuickAuthDisconn(
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
 
 	// 发起请求
-	client := NewHttpClientWithIface(ifname, 5*time.Second)
+	client, err := NewHttpClientWithIface(ifname, 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -308,16 +317,19 @@ func QuickAuthDisconn(
 // PortalChecker 检查当前网络是否需要登录，若为是则返回登录链接
 func PortalChecker(ifname string, kAliveLink string) (bool, string) {
 	// 构造请求参数
-	client := NewHttpClientWithIface(ifname, 5*time.Second)
+	client, err := NewHttpClientWithIface(ifname, 5*time.Second)
+	if err != nil {
+		return false, ""
+	}
+
 	// 发起请求
 	resp, err := client.Get(kAliveLink)
-
-	// 请求结果分析
 	if err != nil {
 		return false, ""
 	}
 	defer resp.Body.Close()
 
+	// 解析请求
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 		loc, err := resp.Location()
 		if err == nil && strings.Contains(loc.String(), "portalScript.do") {

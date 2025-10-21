@@ -21,37 +21,136 @@ type Flags struct {
 
 type WorkerInstance struct {
 	src.ConfigInstance
-	IfIP         string
-	LoginHost    string
-	Wlanuserip   string
-	Wlanacname   string
-	MAC          string
-	Vlan         string
-	HostName     string
-	Rand         string
-	WlanacIp     string
-	Version      int
-	PortalPageID int
-	TimeStamp    int64
-	UUID         string
-	GroupID      int
-	LogoutUID    string
+	LoginIf      *string
+	LoginIfIP    *string
+	LoginHost    *string
+	Wlanuserip   *string
+	Wlanacname   *string
+	MAC          *string
+	Vlan         *string
+	HostName     *string
+	Rand         *string
+	WlanacIp     *string
+	Version      *int
+	PortalPageID *int
+	TimeStamp    *int64
+	UUID         *string
+	GroupID      *int
+	LogoutUID    *string
+}
+
+func doLogin(instance *WorkerInstance) bool {
+	// 检查是否需要登录
+	slog.Debug(fmt.Sprintf("[%s] Checking portal if login is required.", instance.Username))
+	needLogin, needLoginUrl := src.PortalChecker(
+		*instance.LoginIf,
+		instance.KAliveLink,
+	)
+	slog.Debug(fmt.Sprintf("[%s] Need login: %t Redirect link: %s", instance.Username, needLogin, needLoginUrl))
+
+	if needLogin && needLoginUrl != "" {
+		// 若需要登陆，且获取到重定向登录链接
+		slog.Info(fmt.Sprintf("[%s] Login require.", instance.Username))
+
+		nlu, err := url.Parse(needLoginUrl)
+		if err != nil {
+			slog.Error(fmt.Sprintf("[%s] Failed to parse redirect login link: %v", instance.Username, err))
+			return false
+		}
+
+		// 提取重定向 URL 的参数
+		tWlanuserip := nlu.Query().Get("wlanuserip")
+		tWlanacname := nlu.Query().Get("wlanacname")
+		tMAC := nlu.Query().Get("mac")
+		tVlan := nlu.Query().Get("vlan")
+		tHostName := nlu.Query().Get("hostname")
+		tRand := nlu.Query().Get("rand")
+		instance.LoginHost = &nlu.Host
+		instance.Wlanuserip = &tWlanuserip
+		instance.Wlanacname = &tWlanacname
+		instance.MAC = &tMAC
+		instance.Vlan = &tVlan
+		instance.HostName = &tHostName
+		instance.Rand = &tRand
+
+		// 获取登录基本信息
+		portalConfig, err := src.PortalJsonAction(
+			*instance.LoginIf,
+			*instance.LoginHost,
+			instance.UserAgent,
+			*instance.Wlanuserip,
+			*instance.Wlanacname,
+			*instance.MAC,
+			*instance.Vlan,
+			*instance.HostName,
+			*instance.Rand,
+		)
+		if err != nil {
+			slog.Error(fmt.Sprintf("[%s] Failed to fetch Portal Json Action: %v", instance.Username, err))
+			return false
+		}
+		// slog.Debug(fmt.Sprintf("[%s] Portal Config: %v", instance.Username, portalConfig))
+
+		// 提取登录基本信息
+		instance.WlanacIp = &portalConfig.ServerForm.Serverip
+		instance.Version = &portalConfig.ServerForm.PortalVer
+		instance.PortalPageID = &portalConfig.PortalConfig.ID
+		instance.TimeStamp = &portalConfig.PortalConfig.Timestamp
+		instance.UUID = &portalConfig.PortalConfig.UUID
+
+		// 登录
+		loginStat, err := src.QuickAuth(
+			*instance.LoginIf,
+			*instance.LoginHost,
+			instance.UserAgent,
+			instance.Username,
+			instance.Password,
+			*instance.Wlanuserip,
+			*instance.Wlanacname,
+			*instance.WlanacIp,
+			*instance.Vlan,
+			*instance.MAC,
+			*instance.Version,
+			*instance.PortalPageID,
+			*instance.TimeStamp,
+			*instance.UUID,
+			"0",
+			*instance.HostName,
+			*instance.Rand,
+		)
+		if loginStat.Code != "0" || err != nil {
+			if err != nil {
+				slog.Error(fmt.Sprintf("[%s] Login failed: %v", instance.Username, err))
+			} else if loginStat.Code != "0" {
+				slog.Error(fmt.Sprintf("[%s] Login failed: %s", instance.Username, loginStat.Message))
+			} else {
+				slog.Error(fmt.Sprintf("[%s] Login failed: Unknown error.", instance.Username))
+			}
+			return false
+		}
+		instance.GroupID = &loginStat.GroupID
+		instance.LogoutUID = &loginStat.UserID
+		slog.Info(fmt.Sprintf("[%s] Login successfully!", instance.Username))
+	}
+
+	return true
 }
 
 func doLogout(instance *WorkerInstance) {
 	slog.Info(fmt.Sprintf("[%s] Logging out...", instance.Username))
+	tMac, _ := src.GetIPMAC(*instance.LoginIfIP)
 	logoutStat, err := src.QuickAuthDisconn(
-		instance.Interface,
-		instance.LoginHost,
+		*instance.LoginIf,
+		src.PtrOrDefault(instance.LoginHost, "10.20.16.5"),
 		instance.UserAgent,
-		instance.WlanacIp,
-		instance.Wlanuserip,
-		instance.Wlanacname,
-		instance.Version,
+		src.PtrOrDefault(instance.WlanacIp, "10.20.16.2"),
+		src.PtrOrDefault(instance.Wlanuserip, *instance.LoginIfIP),
+		src.PtrOrDefault(instance.Wlanacname, "NFV-BASE-01"),
+		src.PtrOrDefault(instance.Version, 4),
 		"0",
-		instance.LogoutUID,
-		instance.MAC,
-		instance.GroupID,
+		src.PtrOrDefault(instance.LogoutUID, instance.Username+"@SSGSXY"),
+		src.PtrOrDefault(instance.MAC, tMac),
+		src.PtrOrDefault(instance.GroupID, 19),
 		"0",
 	)
 	if err != nil {
@@ -63,52 +162,62 @@ func doLogout(instance *WorkerInstance) {
 	}
 }
 
-func worker(cfg *src.ConfigInstance, quitSender <-chan struct{}, quitWaiter *sync.WaitGroup) {
-	defer quitWaiter.Done()
-	slog.Info(fmt.Sprintf("[%s] Starting instance %s", cfg.Username, cfg.Username))
-	// 将配置写入当前内存中
-	instance := &WorkerInstance{
-		ConfigInstance: *cfg,
-	}
-
-	// 分析接口的IP
-	if cfg.Interface == "" {
+// 解析网络接口设置
+func parseInterface(instanceIf string) (string, string, string, error) {
+	if instanceIf == "" {
+		// 如果为空
 		ifname, ip, err := src.GetDefaultIfIP()
 		if err != nil {
-			slog.Error(fmt.Sprintf("[%s] Failed to get default interface ip: %v", instance.Username, err))
-			return
+			return "", "", "", fmt.Errorf("failed to get default interface ip: %v", err)
 		}
 		mac, err := src.GetIPMAC(ip)
 		if err != nil {
-			slog.Error(fmt.Sprintf("[%s] Failed to get default interface mac: %v", instance.Username, err))
-			return
+			return "", "", "", fmt.Errorf("failed to get default interface mac: %v", err)
 		}
-		instance.Interface = ifname
-		instance.IfIP = ip
-		instance.MAC = mac
-	} else if net.ParseIP(cfg.Interface) == nil {
-		ip, err := src.GetIfIP(cfg.Interface)
+
+		return ifname, ip, mac, nil
+	} else if net.ParseIP(instanceIf) == nil {
+		// 如果不为 IP 地址
+		ip, err := src.GetIfIP(instanceIf)
 		if err != nil {
-			slog.Error(fmt.Sprintf("[%s] Failed to get interface '%s' ip: %v", instance.Username, cfg.Interface, err))
-			return
+			return "", "", "", fmt.Errorf("failed to get interface '%s' ip: %v", instanceIf, err)
 		}
-		mac, err := src.GetIfMAC(cfg.Interface)
+		mac, err := src.GetIfMAC(instanceIf)
 		if err != nil {
-			slog.Error(fmt.Sprintf("[%s] Failed to get interface '%s' mac: %v", instance.Username, cfg.Interface, err))
-			return
+			return "", "", "", fmt.Errorf("failed to get interface '%s' mac: %v", instanceIf, err)
 		}
-		instance.IfIP = ip
-		instance.MAC = mac
+		return instanceIf, ip, mac, nil
 	} else {
-		instance.IfIP = cfg.Interface
-		mac, err := src.GetIPMAC(cfg.Interface)
+		// 如果是 IP 地址
+		mac, err := src.GetIPMAC(instanceIf)
 		if err != nil {
-			slog.Error(fmt.Sprintf("[%s] Failed to get default interface mac: %v", instance.Username, err))
-			return
+			return "", "", "", fmt.Errorf("failed to get interface '%s' mac: %v", instanceIf, err)
 		}
-		instance.MAC = mac
+		return instanceIf, instanceIf, mac, nil
 	}
-	slog.Debug(fmt.Sprintf("[%s] Use interface %s (%s|%s) to send request.", instance.Username, instance.Interface, instance.IfIP, instance.MAC))
+}
+
+// 工作函数
+func worker(cfg src.ConfigInstance, quitSender <-chan struct{}, quitWaiter *sync.WaitGroup) {
+	defer quitWaiter.Done()
+
+	slog.Info(fmt.Sprintf("[%s] Starting instance %s", cfg.Username, cfg.Username))
+	// 将配置写入当前内存中
+	instance := &WorkerInstance{
+		ConfigInstance: cfg,
+	}
+
+	// 分析接口的IP
+	tLoginIf, tLoginIfIP, tMac, err := parseInterface(instance.Interface)
+	if err != nil {
+		slog.Error("[%s] Error parsing interface: %v", instance.Username, err)
+		return
+	} else {
+		instance.LoginIf = &tLoginIf
+		instance.LoginIfIP = &tLoginIfIP
+		instance.MAC = &tMac
+	}
+	slog.Info(fmt.Sprintf("[%s] Use interface %s (%s|%s) to send request.", instance.Username, *instance.LoginIf, *instance.LoginIfIP, *instance.MAC))
 
 	// 为空时提供默认值
 	if instance.UserAgent == "" {
@@ -116,168 +225,55 @@ func worker(cfg *src.ConfigInstance, quitSender <-chan struct{}, quitWaiter *syn
 		slog.Debug(fmt.Sprintf("[%s] Default user agent not set. Return to default '%s'", instance.Username, instance.UserAgent))
 	}
 	if instance.KAliveLink == "" {
-		instance.KAliveLink = "http://1.1.1.1"
+		instance.KAliveLink = "http://3.3.3.3"
 		slog.Debug(fmt.Sprintf("[%s] Default keep alive link not set. Return to default '%s'", instance.Username, instance.KAliveLink))
 	}
-	if instance.LoginHost == "" {
-		instance.LoginHost = "10.20.16.5"
-	}
-	if instance.Wlanacname == "" {
-		instance.Wlanacname = "NFV-BASE-01"
-	}
 
-	kAliveTicker := time.NewTicker(time.Duration(cfg.KeepAlive) * time.Second)
-	defer kAliveTicker.Stop()
+	// kAliveTicker := time.NewTicker(time.Duration(cfg.KeepAlive) * time.Second)
+	// defer kAliveTicker.Stop()
 	retry := 0
 
+loop:
 	for {
-		// 第一段：非阻塞地优先检查退出
 		select {
 		case <-quitSender:
-			// 先停掉ticker，避免更多tick进来
-			kAliveTicker.Stop()
+			// 收到退出信号
 			doLogout(instance)
-			return
+			break loop
 		default:
-		}
-
-		// 第二段：阻塞等待 tick 或 退出
-		select {
-		case <-quitSender:
-			// 登出逻辑
-			kAliveTicker.Stop()
-			doLogout(instance)
-			return
-		case <-kAliveTicker.C:
-			// 再次非阻塞检查一次退出，确保“同时就绪”时也优先退出
-			select {
-			case <-quitSender:
-				kAliveTicker.Stop()
-				doLogout(instance)
-				return
-			default:
-			}
-
-			// 重新检查最新网络接口
-			if cfg.Interface == "" {
-				ifname, ip, err := src.GetDefaultIfIP()
+			// 自动更新默认网口
+			if instance.Interface == "" {
+				now_if, now_ip, err := src.GetDefaultIfIP()
 				if err != nil {
-					slog.Error(fmt.Sprintf("[%s] Failed to get default interface ip: %v", instance.Username, err))
-					return
+					slog.Error(fmt.Sprintf("[%s] Error parsing interface: failed to get default interface ip: %v", instance.Username, err))
 				}
-				mac, err := src.GetIPMAC(ip)
-				if err != nil {
-					slog.Error(fmt.Sprintf("[%s] Failed to get default interface mac: %v", instance.Username, err))
-					return
-				}
-				instance.Interface = ifname
-				instance.IfIP = ip
-				instance.MAC = mac
-
-				slog.Debug(fmt.Sprintf("[%s] Use interface %s (%s|%s) to send request.", instance.Username, instance.Interface, instance.IfIP, instance.MAC))
-			}
-
-			// 检查是否需要登录
-			slog.Debug(fmt.Sprintf("[%s] Checking portal if login is required.", instance.Username))
-			needLogin, needLoginUrl := src.PortalChecker(
-				instance.Interface,
-				cfg.KAliveLink,
-			)
-			slog.Debug(fmt.Sprintf("[%s] Need login: %t Redirect link: %s", instance.Username, needLogin, needLoginUrl))
-
-			if needLogin && needLoginUrl != "" {
-				// 若需要登陆，且获取到重定向登录链接
-				slog.Info(fmt.Sprintf("[%s] Login require.", instance.Username))
-
-				nlu, err := url.Parse(needLoginUrl)
-				if err != nil {
-					slog.Error(fmt.Sprintf("[%s] Failed to parse redirect login link: %v", instance.Username, err))
-					continue
-				}
-
-				// 提取重定向 URL 的参数
-				instance.LoginHost = nlu.Host
-				instance.Wlanuserip = nlu.Query().Get("wlanuserip")
-				instance.Wlanacname = nlu.Query().Get("wlanacname")
-				instance.MAC = nlu.Query().Get("mac")
-				instance.Vlan = nlu.Query().Get("vlan")
-				instance.HostName = nlu.Query().Get("hostname")
-				instance.Rand = nlu.Query().Get("rand")
-
-				// 获取登录基本信息
-				portalConfig, err := src.PortalJsonAction(
-					instance.Interface,
-					instance.LoginHost,
-					instance.UserAgent,
-					instance.Wlanuserip,
-					instance.Wlanacname,
-					instance.MAC,
-					instance.Vlan,
-					instance.HostName,
-					instance.Rand,
-				)
-				if err != nil {
-					slog.Error(fmt.Sprintf("[%s] Failed to fetch Portal Json Action: %v", instance.Username, err))
-					continue
-				}
-				// slog.Debug(fmt.Sprintf("[%s] Portal Config: %v", instance.Username, portalConfig))
-
-				// 提取登录基本信息
-				instance.WlanacIp = portalConfig.ServerForm.Serverip
-				instance.Version = portalConfig.ServerForm.PortalVer
-				instance.PortalPageID = portalConfig.PortalConfig.ID
-				instance.TimeStamp = portalConfig.PortalConfig.Timestamp
-				instance.UUID = portalConfig.PortalConfig.UUID
-
-				// 登录
-				loginStat, err := src.QuickAuth(
-					instance.Interface,
-					instance.LoginHost,
-					instance.UserAgent,
-					instance.Username,
-					instance.Password,
-					instance.Wlanuserip,
-					instance.Wlanacname,
-					instance.WlanacIp,
-					instance.Vlan,
-					instance.MAC,
-					instance.Version,
-					instance.PortalPageID,
-					instance.TimeStamp,
-					instance.UUID,
-					"0",
-					instance.HostName,
-					instance.Rand,
-				)
-				if loginStat.Code != "0" || err != nil {
+				if now_if != *instance.LoginIf || now_ip != *instance.LoginIfIP {
+					tLoginIf, tLoginIfIP, tMac, err := parseInterface(instance.Interface)
 					if err != nil {
-						slog.Error(fmt.Sprintf("[%s] Login failed: %v", instance.Username, err))
-					} else if loginStat.Code != "0" {
-						slog.Error(fmt.Sprintf("[%s] Login failed: %s", instance.Username, loginStat.Message))
+						slog.Error("[%s] Error parsing interface: %v", instance.Username, err)
 					} else {
-						slog.Error(fmt.Sprintf("[%s] Login failed: Unknown error.", instance.Username))
+						instance.LoginIf = &tLoginIf
+						instance.LoginIfIP = &tLoginIfIP
+						instance.MAC = &tMac
+						slog.Info(fmt.Sprintf("[%s] Interface has upgrade to %s (%s|%s).", instance.Username, *instance.LoginIf, *instance.LoginIfIP, *instance.MAC))
 					}
-
-					retry++
-					if instance.RetryMax != 0 && retry >= cfg.RetryMax {
-						slog.Error(fmt.Sprintf("[%s] reached max retries, stop.", instance.Username))
-						return
-					}
-					timer := time.NewTimer(time.Duration(cfg.RetryTime) * time.Second)
-					select {
-					case <-quitSender:
-						timer.Stop()
-						continue // 下一轮触发退出分支
-					case <-timer.C:
-					}
-					continue
 				}
-				retry = 0
-				instance.GroupID = loginStat.GroupID
-				instance.LogoutUID = loginStat.UserID
-				slog.Info(fmt.Sprintf("[%s] Login successfully!", instance.Username))
 			}
-			// time.Sleep(time.Duration(cfg.KeepAlive) * time.Second)
+
+			// 正常执行登录逻辑
+			if doLogin(instance) {
+				retry = 0
+			} else {
+				retry++
+			}
+
+			// 达到最大错误次数，暂停 10 分钟
+			if instance.RetryMax != 0 && retry >= cfg.RetryMax {
+				slog.Error(fmt.Sprintf("[%s] reached max retries, stop 10 min.", instance.Username))
+				time.Sleep(time.Duration(10) * time.Minute)
+			} else {
+				time.Sleep(time.Duration(cfg.KeepAlive) * time.Second)
+			}
 		}
 	}
 }
@@ -302,19 +298,19 @@ func main() {
 	slog.Info("Starting GZGS portal daemon...")
 
 	// 监听终止命令
-	sigs := make(chan os.Signal, 1)
 	quitSender := make(chan struct{})
+	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	var waitGroups sync.WaitGroup
 
-	var quitWaiter sync.WaitGroup
 	for i := range cfg.Instance {
-		quitWaiter.Add(1)
-		go worker(&cfg.Instance[i], quitSender, &quitWaiter)
+		waitGroups.Add(1)
+		go worker(cfg.Instance[i], quitSender, &waitGroups)
 	}
 
 	<-sigs
 	slog.Info("Caught termination signal, logging out...")
 	close(quitSender)
-	quitWaiter.Wait()
-	slog.Info("Exiting...")
+	waitGroups.Wait()
+	slog.Info("All instances stopped. Exiting...")
 }

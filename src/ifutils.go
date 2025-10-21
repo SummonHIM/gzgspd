@@ -3,6 +3,8 @@ package src
 import (
 	"fmt"
 	"net"
+	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -33,35 +35,98 @@ func GetIfIP(ifaceName string) (string, error) {
 
 // GetDefaultIfIP 返回默认接口（非 loopback）IP
 func GetDefaultIfIP() (string, string, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return "", "", err
-	}
-
-	for _, iface := range ifaces {
-		// 忽略未启用或 loopback 的接口
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-
-		addrs, err := iface.Addrs()
+	switch runtime.GOOS {
+	case "linux":
+		// 使用 `ip route get 8.8.8.8` 获取默认网关接口和本地 IP
+		out, err := exec.Command("ip", "route", "get", "8.8.8.8").Output()
 		if err != nil {
-			continue
+			return "", "", err
 		}
+		parts := strings.Fields(string(out))
+		var ifaceName, ipAddr string
+		for i, part := range parts {
+			if part == "dev" && i+1 < len(parts) {
+				ifaceName = parts[i+1]
+			} else if part == "src" && i+1 < len(parts) {
+				ipAddr = parts[i+1]
+			}
+		}
+		if ifaceName == "" || ipAddr == "" {
+			return "", "", fmt.Errorf("cannot find default interface")
+		}
+		return ifaceName, ipAddr, nil
 
-		for _, addr := range addrs {
-			ipNet, ok := addr.(*net.IPNet)
-			if !ok {
-				continue
-			}
-			if ip4 := ipNet.IP.To4(); ip4 != nil {
-				// 找到第一个正常的 IPv4 地址
-				return iface.Name, ip4.String(), nil
+	case "darwin":
+		// macOS 使用 `route -n get default` 获取默认接口
+		out, err := exec.Command("route", "-n", "get", "default").Output()
+		if err != nil {
+			return "", "", err
+		}
+		var ifaceName, ipAddr string
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "interface:") {
+				ifaceName = strings.TrimSpace(strings.TrimPrefix(line, "interface:"))
+				iface, err := net.InterfaceByName(ifaceName)
+				if err != nil {
+					break
+				}
+				addrs, _ := iface.Addrs()
+				for _, addr := range addrs {
+					if ipNet, ok := addr.(*net.IPNet); ok {
+						if ip := ipNet.IP.To4(); ip != nil {
+							ipAddr = ip.String()
+							break
+						}
+					}
+				}
+				break
 			}
 		}
+		if ifaceName == "" || ipAddr == "" {
+			return "", "", fmt.Errorf("cannot find default interface")
+		}
+		return ifaceName, ipAddr, nil
+
+	case "windows":
+		// 使用 CMD route print 获取默认路由
+		out, err := exec.Command("cmd", "/C", "route", "print", "-4").Output()
+		if err != nil {
+			return "", "", err
+		}
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "0.0.0.0") {
+				fields := strings.Fields(line)
+				if len(fields) < 5 {
+					continue
+				}
+				ifaceIP := fields[3] // Interface IP
+				ip := net.ParseIP(ifaceIP)
+				if ip == nil {
+					continue
+				}
+				// 根据接口 IP 查找网卡名
+				ifaces, _ := net.Interfaces()
+				for _, iface := range ifaces {
+					addrs, _ := iface.Addrs()
+					for _, addr := range addrs {
+						if ipnet, ok := addr.(*net.IPNet); ok {
+							if ipnet.IP.Equal(ip) {
+								return iface.Name, ip.String(), nil
+							}
+						}
+					}
+				}
+			}
+		}
+		return "", "", fmt.Errorf("cannot find default interface")
+
+	default:
+		return "", "", fmt.Errorf("platform %s not supported", runtime.GOOS)
 	}
-
-	return "", "", fmt.Errorf("no default interface IP found")
 }
 
 // GetInterfaceMAC 传入网络接口名，返回该接口的 MAC 地址
