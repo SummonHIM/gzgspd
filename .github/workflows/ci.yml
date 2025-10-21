@@ -32,7 +32,7 @@ jobs:
       run: |
         chmod -v +x files/workflow/build.sh
         files/workflow/build.sh
-        go build -o $OUTFILE -v ./...
+        go build -o $OUTFILE -v .
       env:
         BUILD_ENVS: ${{ inputs.BUILD_ENVS }}
 
