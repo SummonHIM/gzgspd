@@ -1,10 +1,12 @@
 package src
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -56,73 +58,60 @@ func GetDefaultIfIP() (string, string, error) {
 		}
 		return ifaceName, ipAddr, nil
 
-	case "darwin":
-		// macOS 使用 `route -n get default` 获取默认接口
-		out, err := exec.Command("route", "-n", "get", "default").Output()
-		if err != nil {
-			return "", "", err
-		}
-		var ifaceName, ipAddr string
-		lines := strings.Split(string(out), "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "interface:") {
-				ifaceName = strings.TrimSpace(strings.TrimPrefix(line, "interface:"))
-				iface, err := net.InterfaceByName(ifaceName)
-				if err != nil {
-					break
-				}
-				addrs, _ := iface.Addrs()
-				for _, addr := range addrs {
-					if ipNet, ok := addr.(*net.IPNet); ok {
-						if ip := ipNet.IP.To4(); ip != nil {
-							ipAddr = ip.String()
-							break
-						}
-					}
-				}
-				break
-			}
-		}
-		if ifaceName == "" || ipAddr == "" {
-			return "", "", fmt.Errorf("cannot find default interface")
-		}
-		return ifaceName, ipAddr, nil
-
 	case "windows":
-		// 使用 CMD route print 获取默认路由
-		out, err := exec.Command("cmd", "/C", "route", "print", "-4").Output()
-		if err != nil {
+		// `route print -4` 输出多条 0.0.0.0 路由，我们取 metric 最小的那条
+		cmd := exec.Command("cmd", "/C", "route", "print", "-4")
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		if err := cmd.Run(); err != nil {
 			return "", "", err
 		}
-		lines := strings.Split(string(out), "\n")
+
+		lines := strings.Split(out.String(), "\n")
+		bestMetric := 1 << 30
+		var bestIfaceIP string
+
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "0.0.0.0") {
-				fields := strings.Fields(line)
-				if len(fields) < 5 {
-					continue
-				}
-				ifaceIP := fields[3] // Interface IP
-				ip := net.ParseIP(ifaceIP)
-				if ip == nil {
-					continue
-				}
-				// 根据接口 IP 查找网卡名
-				ifaces, _ := net.Interfaces()
-				for _, iface := range ifaces {
-					addrs, _ := iface.Addrs()
-					for _, addr := range addrs {
-						if ipnet, ok := addr.(*net.IPNet); ok {
-							if ipnet.IP.Equal(ip) {
-								return iface.Name, ip.String(), nil
-							}
-						}
+			if !strings.HasPrefix(line, "0.0.0.0") {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) < 5 {
+				continue
+			}
+			// Windows 默认路由格式: 网络目标 子网掩码 网关 接口 metric
+			ifaceIP := fields[3]
+			metric, _ := strconv.Atoi(fields[4])
+
+			if metric < bestMetric {
+				bestMetric = metric
+				bestIfaceIP = ifaceIP
+			}
+		}
+
+		if bestIfaceIP == "" {
+			return "", "", fmt.Errorf("cannot find default route")
+		}
+
+		ip := net.ParseIP(bestIfaceIP)
+		if ip == nil {
+			return "", "", fmt.Errorf("invalid interface IP: %s", bestIfaceIP)
+		}
+
+		ifaces, _ := net.Interfaces()
+		for _, iface := range ifaces {
+			addrs, _ := iface.Addrs()
+			for _, addr := range addrs {
+				if ipnet, ok := addr.(*net.IPNet); ok {
+					if ipnet.IP.Equal(ip) {
+						return iface.Name, ip.String(), nil
 					}
 				}
 			}
 		}
-		return "", "", fmt.Errorf("cannot find default interface")
+
+		return "", "", fmt.Errorf("cannot find interface for IP %s", bestIfaceIP)
 
 	default:
 		return "", "", fmt.Errorf("platform %s not supported", runtime.GOOS)
