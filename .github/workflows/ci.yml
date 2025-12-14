@@ -48,6 +48,8 @@ jobs:
       - name: Build
         shell: bash
         run: |
+          cd gzgspd
+
           if [ ! -d "built" ]; then
             mkdir -vp "built"
           fi
@@ -64,7 +66,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Built-${{ matrix.os }}
-          path: built/**
+          path: gzgspd/built/**
 
   release:
     # 只在 tag push 时执行
