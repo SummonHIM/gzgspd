@@ -339,10 +339,12 @@ loop:
 				if err != nil {
 					slog.Error(fmt.Sprintf("[%s] Error parsing interface: failed to get default interface ip: %v", statusKey, err))
 				}
+				if instance.LoginIf != now_if || instance.LoginIfIP != now_ip || instance.MAC != now_mac {
+					slog.Info(fmt.Sprintf("[%s] Interface has upgrade to %s (%s|%s).", statusKey, instance.LoginIf, instance.LoginIfIP, instance.MAC))
+				}
 				instance.LoginIf = now_if
 				instance.LoginIfIP = now_ip
 				instance.MAC = now_mac
-				slog.Info(fmt.Sprintf("[%s] Interface has upgrade to %s (%s|%s).", statusKey, instance.LoginIf, instance.LoginIfIP, instance.MAC))
 			}
 
 			if !quitSignal {
