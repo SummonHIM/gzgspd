@@ -44,10 +44,10 @@ jobs:
           RUNNER_OS_LOWER=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
 
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            echo "OUT_FILE=built/gzgspd-${RUNNER_OS_LOWER}-${GOARCH}.exe" >> "$GITHUB_ENV"
-            echo "OUT_FILE_NOD=built/gzgsp-${RUNNER_OS_LOWER}-${GOARCH}.exe" >> "$GITHUB_ENV"
+            echo "OUT_FILE=built/gzgspd-${RUNNER_OS_LOWER}-${GOARCH}-${GITHUB_REF_NAME}.exe" >> "$GITHUB_ENV"
+            echo "OUT_FILE_NOD=built/gzgsp-${RUNNER_OS_LOWER}-${GOARCH}-${GITHUB_REF_NAME}.exe" >> "$GITHUB_ENV"
           else
-            echo "OUT_FILE=built/gzgspd-${RUNNER_OS_LOWER}-${GOARCH}" >> "$GITHUB_ENV"
+            echo "OUT_FILE=built/gzgspd-${RUNNER_OS_LOWER}-${GOARCH}-${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
           fi
 
           for env in $BUILD_ENVS; do
@@ -63,10 +63,10 @@ jobs:
             mkdir -vp "built"
           fi
 
-          go build -ldflags="-X 'main.Version=$GITHUB_REF_NAME'" -o ${OUT_FILE} -v gzgspd
+          go build -ldflags "-X main.Version=${GITHUB_REF_NAME}" -o "$OUT_FILE" -v .
 
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            go build -ldflags "-X main.Version=\"$GITHUB_REF_NAME\" -H=windowsgui" -o "$OUT_FILE_NOD" -v gzgspd
+            go build -ldflags "-X main.Version=${GITHUB_REF_NAME} -H=windowsgui" -o "$OUT_FILE_NOD" -v .
           fi
         env:
           BUILD_ENVS: ${{ inputs.BUILD_ENVS }}
