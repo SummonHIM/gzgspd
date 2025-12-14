@@ -2,6 +2,9 @@ name: Build
 
 on:
   push:
+    paths:
+      - '.github/**'
+      - 'gzgspd/**'
     branches: ["main"]
     tags: ["v*.*.*"]
   pull_request:
@@ -27,6 +30,10 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: "1.25"
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libayatana-appindicator3-dev
 
       - name: Set up environments
         shell: bash
