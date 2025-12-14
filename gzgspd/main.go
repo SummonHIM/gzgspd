@@ -215,6 +215,7 @@ func doLogout(instance *WorkerInstance, statusKey string, flags *Flags) {
 	WorkerStatusLock.Lock()
 	WorkerStatus[statusKey] = StateLoggingOut
 	WorkerStatusLock.Unlock()
+
 	if !flags.Daemon {
 		_ = beeep.Notify(
 			"GZGS Portal",
@@ -222,8 +223,18 @@ func doLogout(instance *WorkerInstance, statusKey string, flags *Flags) {
 			Icon,
 		)
 	}
+
 	slog.Info(fmt.Sprintf("[%s] Logging out...", statusKey))
+
 	tMac, _ := GetIPMAC(instance.LoginIfIP)
+
+	if instance.Version == 0 {
+		instance.Version = 4
+	}
+	if instance.GroupID == 0 {
+		instance.GroupID = 19
+	}
+
 	logoutStat, err := TelecomQuickAuthDisconn(
 		instance.LoginIfIP,
 		instance.GetStringFallback(instance.LoginHost, "10.20.16.5"),
@@ -238,6 +249,7 @@ func doLogout(instance *WorkerInstance, statusKey string, flags *Flags) {
 		instance.GroupID,
 		"0",
 	)
+
 	if err != nil {
 		slog.Error(fmt.Sprintf("[%s] Logout failed: %v", statusKey, err))
 	} else if logoutStat.Code != "0" {
@@ -406,7 +418,7 @@ func openLogFile(path string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
-		cmd = exec.Command("cmd", "/C", "start", " ", path)
+		cmd = exec.Command("explorer", path)
 	case "darwin":
 		cmd = exec.Command("open", path)
 	case "linux":
