@@ -65,7 +65,7 @@ jobs:
 
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             go get github.com/akavel/rsrc
-            $(go env GOPATH)/bin/rsrc -ico assets/logo.ico -o rsrc.syso
+            $(go env GOPATH)\bin\rsrc.exe -ico assets/logo.ico -o rsrc.syso
           fi
 
           go build -ldflags "-X main.Version=${GITHUB_REF_NAME}" -o "$OUT_FILE" -v .
