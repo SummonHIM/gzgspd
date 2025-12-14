@@ -27,6 +27,7 @@ The configuration file uses JSON format, as shown below:
 ```Json
 {
   "log_level": 0,
+  "log_path": "daemon.log",
   "instance": [
     {
       "username": "13412345678",
@@ -46,6 +47,7 @@ and its struct is defined as follows:
 ```Go
 type Config struct {
 	LogLevel int              `json:"log_level"` // Log level (https://go.dev/src/log/slog/level.go)
+  LogPath  string           `json:"log_path"`  // Log path
 	Instance []ConfigInstance `json:"instance"`  // Instances
 }
 
