@@ -63,6 +63,11 @@ jobs:
             mkdir -vp "built"
           fi
 
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            go get github.com/akavel/rsrc
+            rsrc -ico assets/logo.ico -o rsrc.syso
+          fi
+
           go build -ldflags "-X main.Version=${GITHUB_REF_NAME}" -o "$OUT_FILE" -v .
 
           if [[ "$RUNNER_OS" == "Windows" ]]; then
