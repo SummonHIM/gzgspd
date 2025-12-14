@@ -1,4 +1,4 @@
-package src
+package main
 
 import (
 	"encoding/json"
@@ -21,27 +21,8 @@ type ConfigInstance struct {
 // Config 总配置
 type Config struct {
 	LogLevel int              `json:"log_level"`
+	LogPath  string           `json:"log_path"`
 	Instance []ConfigInstance `json:"instance"`
-}
-
-// LoadConfig 从文件读取并解析配置
-func LoadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("an error occurred while loading the configuration file: %w", err)
-	}
-
-	var cfg Config
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("an error occurred while parsing the configuration file: %w", err)
-	}
-
-	// 校验配置
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration file: %w", err)
-	}
-
-	return &cfg, nil
 }
 
 // Validate 校验配置内容
@@ -52,20 +33,41 @@ func (c *Config) Validate() error {
 
 	for i, inst := range c.Instance {
 		if inst.Username == "" {
-			return fmt.Errorf("instance[%d]: username cannot be empty", i)
+			return fmt.Errorf("instance[%d]'s username cannot be empty", i)
 		}
 		if inst.Password == "" {
-			return fmt.Errorf("instance[%d]: password cannot be empty", i)
+			return fmt.Errorf("instance[%d]'s password cannot be empty", i)
 		}
 		if inst.KeepAlive <= 0 {
-			return fmt.Errorf("instance[%d]: keep_alive must be greater than 0", i)
+			return fmt.Errorf("instance[%d]'s keep_alive must be greater than 0", i)
 		}
 		if inst.RetryMax < 0 {
-			return fmt.Errorf("instance[%d]: retry_max may not be negative", i)
+			return fmt.Errorf("instance[%d]'s retry_max may not be negative", i)
 		}
 		if inst.RetryTime <= 0 {
-			return fmt.Errorf("instance[%d]: retry_time must be greater than 0", i)
+			return fmt.Errorf("instance[%d]'s retry_time must be greater than 0", i)
 		}
 	}
 	return nil
+}
+
+// LoadConfig 从文件读取并解析配置
+// 传入Json配置文件路径，返回总配置结构体
+func LoadConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+
+	// 校验配置
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }

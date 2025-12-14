@@ -1,4 +1,4 @@
-package src
+package main
 
 import (
 	"bytes"
@@ -112,9 +112,9 @@ type QuickAuthResponse struct {
 	OperatingBindCtrlList []interface{} `json:"operatingBindCtrlList"`
 }
 
-// PortalJsonAction 获取登录的基本信息
-func PortalJsonAction(
-	ifname string,
+// TelecomPortalJsonAction 获取登录的基本信息
+func TelecomPortalJsonAction(
+	requestIP string,
 	host string,
 	user_agent string,
 	wlanuserip string,
@@ -148,7 +148,7 @@ func PortalJsonAction(
 	req.Header.Set("Accept-Language", "zh-CN")
 
 	// 发起请求
-	client, err := NewHttpClientWithIface(ifname, 5*time.Second)
+	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -173,9 +173,9 @@ func PortalJsonAction(
 	return &result, nil
 }
 
-// QuickAuth 登录
-func QuickAuth(
-	ifname string,
+// TelecomQuickAuth 登录
+func TelecomQuickAuth(
+	requestIP string,
 	host string,
 	user_agent string,
 	userid string,
@@ -224,7 +224,7 @@ func QuickAuth(
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
 
 	// 发起请求
-	client, err := NewHttpClientWithIface(ifname, 5*time.Second)
+	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -249,9 +249,9 @@ func QuickAuth(
 	return &result, nil
 }
 
-// QuickAuthDisconn 登出
-func QuickAuthDisconn(
-	ifname string,
+// TelecomQuickAuthDisconn 登出
+func TelecomQuickAuthDisconn(
+	requestIP string,
 	host string,
 	user_agent string,
 	wlanacip string,
@@ -289,7 +289,7 @@ func QuickAuthDisconn(
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
 
 	// 发起请求
-	client, err := NewHttpClientWithIface(ifname, 5*time.Second)
+	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -314,10 +314,10 @@ func QuickAuthDisconn(
 	return &result, nil
 }
 
-// PortalChecker 检查当前网络是否需要登录，若为是则返回登录链接
-func PortalChecker(ifname string, kAliveLink string) (bool, string) {
+// TelecomPortalChecker 检查当前网络是否需要登录，若为是则返回登录链接
+func TelecomPortalChecker(requestIP string, kAliveLink string) (bool, string) {
 	// 构造请求参数
-	client, err := NewHttpClientWithIface(ifname, 5*time.Second)
+	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return false, ""
 	}
