@@ -8,9 +8,12 @@ I want you to be able to tell what it is at a glance.
 
 [GitHub Releases](https://github.com/SummonHIM/gzgspd/releases/latest)
 
+There are two different in windows variants. gzgsp meaning no terminal display. gzgspd mean daemon with terminal display.
+
 ### Arguments
 
 - `--config`: Specify configuration file path.
+- `--daemon`: Run as daemon.
 
 ### Run as service
 
