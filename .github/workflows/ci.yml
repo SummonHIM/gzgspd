@@ -53,6 +53,8 @@ jobs:
           for env in $BUILD_ENVS; do
             echo "$env" >> "$GITHUB_ENV"
           done
+        env:
+          BUILD_ENVS: ${{ inputs.BUILD_ENVS }}
 
       - name: Build
         shell: bash
@@ -73,8 +75,6 @@ jobs:
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             go build -ldflags "-X main.Version=${GITHUB_REF_NAME} -H=windowsgui" -o "$OUT_FILE_NOD" -v .
           fi
-        env:
-          BUILD_ENVS: ${{ inputs.BUILD_ENVS }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
