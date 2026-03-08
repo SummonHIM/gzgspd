@@ -1,3 +1,5 @@
+//go:build !embedded
+
 package main
 
 import (
