@@ -24,6 +24,7 @@ type WorkerInstance struct {
 	ConfigInstance
 	LoginIf      string
 	LoginIfIP    string
+	LoginScheme  string
 	LoginHost    string
 	Wlanuserip   string
 	Wlanacname   string
@@ -97,6 +98,7 @@ func doLogin(instance *WorkerInstance, statusKey string, flags *Flags) bool {
 		tVlan := nlu.Query().Get("vlan")
 		tHostName := nlu.Query().Get("hostname")
 		tRand := nlu.Query().Get("rand")
+		instance.LoginScheme = nlu.Scheme
 		instance.LoginHost = nlu.Host
 		instance.Wlanuserip = tWlanuserip
 		instance.Wlanacname = tWlanacname
@@ -108,6 +110,7 @@ func doLogin(instance *WorkerInstance, statusKey string, flags *Flags) bool {
 		// 获取登录基本信息
 		portalConfig, err := TelecomPortalJsonAction(
 			instance.LoginIfIP,
+			instance.LoginScheme,
 			instance.LoginHost,
 			instance.UserAgent,
 			instance.Wlanuserip,
@@ -136,6 +139,7 @@ func doLogin(instance *WorkerInstance, statusKey string, flags *Flags) bool {
 		// 登录
 		loginStat, err := TelecomQuickAuth(
 			instance.LoginIfIP,
+			instance.LoginScheme,
 			instance.LoginHost,
 			instance.UserAgent,
 			instance.Username,
@@ -198,6 +202,7 @@ func doLogout(instance *WorkerInstance, statusKey string, flags *Flags) {
 
 	logoutStat, err := TelecomQuickAuthDisconn(
 		instance.LoginIfIP,
+		instance.GetStringFallback(instance.LoginScheme, "https"),
 		instance.GetStringFallback(instance.LoginHost, "10.20.16.5"),
 		instance.UserAgent,
 		instance.GetStringFallback(instance.WlanacIp, "10.20.16.2"),

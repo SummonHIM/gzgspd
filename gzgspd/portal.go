@@ -7,8 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
+
+	"github.com/robertkrimen/otto"
 )
 
 // ActionResponse PortalJsonAction 返回的结构
@@ -115,6 +118,7 @@ type QuickAuthResponse struct {
 // TelecomPortalJsonAction 获取登录的基本信息
 func TelecomPortalJsonAction(
 	requestIP string,
+	scheme string,
 	host string,
 	user_agent string,
 	wlanuserip string,
@@ -134,7 +138,7 @@ func TelecomPortalJsonAction(
 	params.Set("rand", randStr)
 	params.Set("viewStatus", "1")
 
-	fullURL := "http://" + host + "/PortalJsonAction.do?" + params.Encode()
+	fullURL := scheme + "://" + host + "/PortalJsonAction.do?" + params.Encode()
 
 	// 创建请求
 	req, err := http.NewRequest("GET", fullURL, nil)
@@ -176,6 +180,7 @@ func TelecomPortalJsonAction(
 // TelecomQuickAuth 登录
 func TelecomQuickAuth(
 	requestIP string,
+	scheme string,
 	host string,
 	user_agent string,
 	userid string,
@@ -210,7 +215,7 @@ func TelecomQuickAuth(
 	params.Set("hostname", hostname)
 	params.Set("rand", rand)
 
-	fullURL := "http://" + host + "/quickauth.do?" + params.Encode()
+	fullURL := scheme + "://" + host + "/quickauth.do?" + params.Encode()
 
 	// 创建请求
 	req, err := http.NewRequest("GET", fullURL, nil)
@@ -252,6 +257,7 @@ func TelecomQuickAuth(
 // TelecomQuickAuthDisconn 登出
 func TelecomQuickAuthDisconn(
 	requestIP string,
+	scheme string,
 	host string,
 	user_agent string,
 	wlanacip string,
@@ -277,7 +283,7 @@ func TelecomQuickAuthDisconn(
 	data.Set("clearOperator", clearOperator)
 
 	// 创建 POST 请求
-	req, err := http.NewRequest("POST", "http://"+host+"/quickauthdisconn.do", bytes.NewBufferString(data.Encode()))
+	req, err := http.NewRequest("POST", scheme+"://"+host+"/quickauthdisconn.do", bytes.NewBufferString(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -316,25 +322,65 @@ func TelecomQuickAuthDisconn(
 
 // TelecomPortalChecker 检查当前网络是否需要登录，若为是则返回登录链接
 func TelecomPortalChecker(requestIP string, kAliveLink string) (bool, string) {
-	// 构造请求参数
 	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return false, ""
 	}
 
-	// 发起请求
 	resp, err := client.Get(kAliveLink)
 	if err != nil {
 		return false, ""
 	}
 	defer resp.Body.Close()
 
-	// 解析请求
+	// 定义 portal 关键字
+	portalKeywords := []string{"portalScript.do", "portal.do"}
+
+	// 1️⃣ 检测 3xx 重定向
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 		loc, err := resp.Location()
-		if err == nil && strings.Contains(loc.String(), "portalScript.do") {
-			return true, loc.String()
+		if err == nil {
+			for _, kw := range portalKeywords {
+				if strings.Contains(loc.String(), kw) {
+					return true, loc.String()
+				}
+			}
 		}
 	}
+
+	// 2️⃣ 检测 200 页面 + MAGI 或 portal 页面
+	if resp.StatusCode == 200 {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return false, ""
+		}
+		html := string(body)
+
+		re := regexp.MustCompile(`<script[^>]*>([\s\S]*?)</script>`)
+		scripts := re.FindAllStringSubmatch(html, -1)
+		for _, s := range scripts {
+			js := s[1]
+
+			vm := otto.New()
+			var finalURL string
+			vm.Set("location", map[string]interface{}{
+				"replace": func(call otto.FunctionCall) otto.Value {
+					s, _ := call.Argument(0).ToString()
+					finalURL = s
+					return otto.Value{}
+				},
+			})
+
+			_, err := vm.Run(js)
+			if err == nil && finalURL != "" {
+				for _, kw := range portalKeywords {
+					if strings.Contains(finalURL, kw) {
+						return true, finalURL
+					}
+				}
+			}
+		}
+	}
+
 	return false, ""
 }

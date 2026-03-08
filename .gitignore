@@ -40,3 +40,6 @@ config.*.json
 
 # log file
 *.log
+
+# vscode
+.vscode

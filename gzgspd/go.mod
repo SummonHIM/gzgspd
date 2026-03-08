@@ -21,7 +21,10 @@ require (
 	github.com/jackmordaunt/icns/v3 v3.0.1 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
+	github.com/robertkrimen/otto v0.5.1 // indirect
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/sergeymakinen/go-ico v1.0.0-beta.0 // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
+	golang.org/x/text v0.4.0 // indirect
+	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 )
