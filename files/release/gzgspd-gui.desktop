@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=GZGS Portal Login
+Comment=Guangzhou College of Technology and Business portal login daemon.
+Exec=/usr/bin/gzgspd-gui --config /etc/gzgspd/config.json
+Icon=gzgspd-gui-logo
+Terminal=false
+Type=Application
+Categories=Network;

@@ -5,23 +5,70 @@ on:
     paths:
       - ".github/workflows/**"
       - "gzgspd/**"
-    branches: ["main"]
-    tags: ["v*.*.*"]
+    branches: 
+      - "main"
+    tags: 
+      - "v*.*.*"
   pull_request:
-    branches: ["main"]
-  workflow_dispatch:
-    inputs:
-      BUILD_ENVS:
-        description: "Build Environments (Space delimited)"
-        required: false
-        default: ""
+    branches: 
+      - "main"
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        jobs:
+          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
+          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64 }
+          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1 }
+          - { goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2 }
+          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3 }
+          - { goos: darwin, goarch: arm64, output: arm64 }
+
+          - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386}
+          - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat' }
+          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-compatible} # old style file name will be removed in next released
+          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64, debian: amd64, rpm: x86_64, pacman: x86_64}
+          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-v1, debian: amd64, rpm: x86_64, pacman: x86_64, test: test }
+          - { goos: linux, goarch: amd64, goamd64: v2, output: amd64-v2, debian: amd64, rpm: x86_64, pacman: x86_64}
+          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64-v3, debian: amd64, rpm: x86_64, pacman: x86_64}
+          - { goos: linux, goarch: arm64, output: arm64, debian: arm64, rpm: aarch64, pacman: aarch64}  
+          - { goos: linux, goarch: arm, goarm: '5', output: armv5 }
+          - { goos: linux, goarch: arm, goarm: '6', output: armv6, debian: armel, rpm: armv6hl} 
+          - { goos: linux, goarch: arm, goarm: '7', output: armv7, debian: armhf, rpm: armv7hl, pacman: armv7hl}
+          - { goos: linux, goarch: mips, gomips: hardfloat, output: mips-hardfloat }
+          - { goos: linux, goarch: mips, gomips: softfloat, output: mips-softfloat }
+          - { goos: linux, goarch: mipsle, gomips: hardfloat, output: mipsle-hardfloat }
+          - { goos: linux, goarch: mipsle, gomips: softfloat, output: mipsle-softfloat }
+          - { goos: linux, goarch: mips64, output: mips64 }
+          - { goos: linux, goarch: mips64le, output: mips64le, debian: mips64el, rpm: mips64el }
+          - { goos: linux, goarch: loong64, output: loong64-abi1, abi: '1', debian: loongarch64, rpm: loongarch64 }
+          - { goos: linux, goarch: loong64, output: loong64-abi2, abi: '2', debian: loong64, rpm: loong64 }
+          - { goos: linux, goarch: riscv64, output: riscv64, debian: riscv64, rpm: riscv64 }
+          - { goos: linux, goarch: s390x, output: s390x, debian: s390x, rpm: s390x }
+          - { goos: linux, goarch: ppc64le, output: ppc64le, debian: ppc64el, rpm: ppc64le }
+
+          - { goos: windows, goarch: '386', output: '386' }
+          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
+          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64 }
+          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-v1 }
+          - { goos: windows, goarch: amd64, goamd64: v2, output: amd64-v2 }
+          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64-v3 }
+          - { goos: windows, goarch: arm64, output: arm64 }
+
+          - { goos: freebsd, goarch: '386', output: '386' }
+          - { goos: freebsd, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
+          - { goos: freebsd, goarch: amd64, goamd64: v3, output: amd64 }
+          - { goos: freebsd, goarch: amd64, goamd64: v1, output: amd64-v1 }
+          - { goos: freebsd, goarch: amd64, goamd64: v2, output: amd64-v2 }
+          - { goos: freebsd, goarch: amd64, goamd64: v3, output: amd64-v3 }
+          - { goos: freebsd, goarch: arm64, output: arm64 }
+
+          - { goos: android, goarch: '386', ndk: i686-linux-android34, output: '386' }
+          - { goos: android, goarch: amd64, ndk: x86_64-linux-android34, output: amd64 }
+          - { goos: android, goarch: arm, ndk: armv7a-linux-androideabi34, output: armv7 }
+          - { goos: android, goarch: arm64, ndk: aarch64-linux-android34, output: arm64-v8 }
 
     steps:
       - uses: actions/checkout@v4
@@ -31,56 +78,121 @@ jobs:
         with:
           go-version: "1.25"
 
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libayatana-appindicator3-dev
 
-      - name: Set up environments
+      - name: Set up environment variables
         shell: bash
         run: |
-          GOARCH=$(go env GOARCH)
-          RUNNER_OS_LOWER=$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')
+          VERSION="${GITHUB_REF_NAME,,}-$(git rev-parse --short HEAD)"
+          VERSION="${VERSION//\//-}"
+          PackageVersion=${GITHUB_RUN_ID}
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "PackageVersion=${PackageVersion}" >> $GITHUB_ENV
 
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            echo "OUT_FILE=built/gzgspd-${RUNNER_OS_LOWER}-${GOARCH}-${GITHUB_REF_NAME}.exe" >> "$GITHUB_ENV"
-            echo "OUT_FILE_NOD=built/gzgsp-${RUNNER_OS_LOWER}-${GOARCH}-${GITHUB_REF_NAME}.exe" >> "$GITHUB_ENV"
-          else
-            echo "OUT_FILE=built/gzgspd-${RUNNER_OS_LOWER}-${GOARCH}-${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
-          fi
+          echo "BUILDTIME=$(date)" >> $GITHUB_ENV
+          echo "CGO_ENABLED=0" >> $GITHUB_ENV
+          echo "BUILDTAG=-extldflags --static" >> $GITHUB_ENV
+          echo "GOTOOLCHAIN=local" >> $GITHUB_ENV
 
-          for env in $BUILD_ENVS; do
-            echo "$env" >> "$GITHUB_ENV"
-          done
+      - name: Setup NDK
+        if: ${{ matrix.jobs.goos == 'android' }}
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r27d
+
+      - name: Set NDK path
+        if: ${{ matrix.jobs.goos == 'android' }}
+        run: |
+          echo "CC=${{steps.setup-ndk.outputs.ndk-path}}/toolchains/llvm/prebuilt/linux-x86_64/bin/${{matrix.jobs.ndk}}-clang" >> $GITHUB_ENV
+          echo "CGO_ENABLED=1" >> $GITHUB_ENV
+          echo "BUILDTAG=" >> $GITHUB_ENV
+
+      - name: Build core
         env:
-          BUILD_ENVS: ${{ inputs.BUILD_ENVS }}
-
-      - name: Build
-        shell: bash
+          GOOS: ${{matrix.jobs.goos}}
+          GOARCH: ${{matrix.jobs.goarch}}
+          GOAMD64: ${{matrix.jobs.goamd64}}
+          GO386: ${{matrix.jobs.go386}}
+          GOARM: ${{matrix.jobs.goarm}}
+          GOMIPS: ${{matrix.jobs.gomips}}
         run: |
           cd gzgspd
-
-          if [ ! -d "built" ]; then
-            mkdir -vp "built"
+          go env
+          go build -v -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s" -o ../gzgspd
+          go build -v -tags gui -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s -H windowsgui" -o ../gzgspd-gui
+          cd ..
+          if [ "${{matrix.jobs.goos}}" = "windows" ]; then
+            cp gzgspd gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
+            cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
+            zip -r gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
+            zip -r gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
+          else
+            cp gzgspd gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
+            cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
+            gzip -c gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
+            gzip -c gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
+            rm gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}} gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
           fi
 
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            go install github.com/akavel/rsrc@latest
-            $(go env GOPATH)\\bin\\rsrc.exe -ico assets/logo.ico -o rsrc.syso
-          fi
+      - name: Package DEB
+        if: matrix.jobs.debian != ''
+        run: |
+          set -xeuo pipefail
+          sudo gem install fpm
+          cp files/release/.fpm .fpm
 
-          go build -ldflags "-X main.Version=${GITHUB_REF_NAME}" -o "$OUT_FILE" -v .
+          fpm -t deb \
+            -v "${PackageVersion}" \
+            -p "gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.deb" \
+            --architecture ${{ matrix.jobs.debian }} \
+            gzgspd=/usr/bin/gzgspd \
+            gzgspd-gui=/usr/bin/gzgspd-gui
 
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            go build -ldflags "-X main.Version=${GITHUB_REF_NAME} -H=windowsgui" -o "$OUT_FILE_NOD" -v .
-          fi
+      - name: Package RPM
+        if: matrix.jobs.rpm != ''
+        run: |
+          set -xeuo pipefail
+          sudo gem install fpm
+          cp files/release/.fpm .fpm
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+          fpm -t rpm \
+            -v "${PackageVersion}" \
+            -p "gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.rpm" \
+            --architecture ${{ matrix.jobs.rpm }} \
+            gzgspd=/usr/bin/gzgspd \
+            gzgspd-gui=/usr/bin/gzgspd-gui
+
+      - name: Package Pacman
+        if: matrix.jobs.pacman != ''
+        run: |
+          set -xeuo pipefail
+          sudo gem install fpm
+          sudo apt-get update && sudo apt-get install -y libarchive-tools
+          cp files/release/.fpm .fpm
+
+          fpm -t pacman \
+            -v "${PackageVersion}" \
+            -p "gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.pkg.tar.zst" \
+            --architecture ${{ matrix.jobs.pacman }} \
+            gzgspd=/usr/bin/gzgspd \
+            gzgspd-gui=/usr/bin/gzgspd-gui
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v7
         with:
-          name: built-${{ matrix.os }}
-          path: gzgspd/built/**
+          name: "${{ matrix.jobs.goos }}-${{ matrix.jobs.output }}"
+          path: |
+            mihomo*.gz
+            mihomo*.deb
+            mihomo*.rpm
+            mihomo*.pkg.tar.zst
+            mihomo*.zip
+            version.txt
+            checksums.txt
 
   release:
     # 只在 tag push 时执行
@@ -94,12 +206,17 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: bin
+
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: bin
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        if: ${{ success() }}
         with:
           name: Release ${{ github.ref_name }}
-          files: dist/**/*
+          files: bin/*
           draft: true
           generate_release_notes: true

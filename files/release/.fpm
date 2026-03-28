@@ -1,0 +1,14 @@
+-s dir
+--name gzgspd
+--category net
+--description "Guangzhou College of Technology and Business portal login daemon."
+--url "https://github.com/SummonHIM/gzgspd/"
+--maintainer "SummonHIM <summonhim@summonhim.top>"
+--deb-field "Bug: https://github.com/SummonHIM/gzgspd/issues"
+--no-deb-generate-changes
+--config-files /etc/gzgspd/config.json
+
+files/release/config.json=/etc/gzgspd/config.json
+files/release/gzgspd-gui.desktop=/usr/share/applications/gzgspd-gui.desktop
+files/release/gzgspd-gui-logo.png=/usr/share/icons/hicolor/256x256/apps/gzgspd-gui-logo.png
+files/services/systemd/gzgspd.service=/usr/lib/systemd/system/gzgspd.service

@@ -4,11 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/gzgspd --config /etc/gzgspd/config.json
+ExecStart=/usr/bin/gzgspd --config /etc/gzgspd/config.json
 Restart=always
 RestartSec=30
-StandardOutput=journal
-StandardError=journal
 KillSignal=SIGTERM
 
 [Install]

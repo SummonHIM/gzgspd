@@ -35,8 +35,8 @@ go.work.sum
 rsrc.syso
 
 # config file
-config.json
-config.*.json
+/config.json
+/config.*.json
 
 # log file
 *.log
