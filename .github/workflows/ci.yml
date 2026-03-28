@@ -26,13 +26,13 @@ jobs:
           - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3 }
           - { goos: darwin, goarch: arm64, output: arm64 }
 
-          - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386, gui: true }
+          - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386 }
           - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat' }
           - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
-          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true }
-          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-v1, debian: amd64, rpm: x86_64, pacman: x86_64, test: test, gui: true }
-          - { goos: linux, goarch: amd64, goamd64: v2, output: amd64-v2, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true}
-          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64-v3, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true}
+          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64, debian: amd64, rpm: x86_64, pacman: x86_64 }
+          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-v1, debian: amd64, rpm: x86_64, pacman: x86_64, test: test }
+          - { goos: linux, goarch: amd64, goamd64: v2, output: amd64-v2, debian: amd64, rpm: x86_64, pacman: x86_64 }
+          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64-v3, debian: amd64, rpm: x86_64, pacman: x86_64 }
           - { goos: linux, goarch: arm64, output: arm64, debian: arm64, rpm: aarch64, pacman: aarch64 }  
           - { goos: linux, goarch: arm, goarm: '5', output: armv5 }
           - { goos: linux, goarch: arm, goarm: '6', output: armv6, debian: armel, rpm: armv6hl} 
@@ -78,7 +78,8 @@ jobs:
         with:
           go-version: "1.25"
 
-      - name: Install dependencies
+      - name: Install linux dependencies
+        if: ${{ matrix.jobs.goos == 'linux' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc libgtk-3-dev libayatana-appindicator3-dev
@@ -176,8 +177,7 @@ jobs:
             -v "${PackageVersion}" \
             -p "gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.deb" \
             --architecture ${{ matrix.jobs.debian }} \
-            gzgspd=/usr/bin/gzgspd \
-            gzgspd-gui=/usr/bin/gzgspd-gui
+            gzgspd=/usr/bin/gzgspd
 
       - name: Package RPM
         if: matrix.jobs.rpm != ''
@@ -190,8 +190,7 @@ jobs:
             -v "${PackageVersion}" \
             -p "gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.rpm" \
             --architecture ${{ matrix.jobs.rpm }} \
-            gzgspd=/usr/bin/gzgspd \
-            gzgspd-gui=/usr/bin/gzgspd-gui
+            gzgspd=/usr/bin/gzgspd
 
       - name: Package Pacman
         if: matrix.jobs.pacman != ''
@@ -205,8 +204,7 @@ jobs:
             -v "${PackageVersion}" \
             -p "gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.pkg.tar.zst" \
             --architecture ${{ matrix.jobs.pacman }} \
-            gzgspd=/usr/bin/gzgspd \
-            gzgspd-gui=/usr/bin/gzgspd-gui
+            gzgspd=/usr/bin/gzgspd
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v7
