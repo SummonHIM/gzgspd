@@ -19,12 +19,12 @@ jobs:
     strategy:
       matrix:
         jobs:
-          - { runs-on: macos-latest, goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible, gui: true } # old style file name will be removed in next released
-          - { runs-on: macos-latest, goos: darwin, goarch: amd64, goamd64: v3, output: amd64, gui: true }
-          - { runs-on: macos-latest, goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1, gui: true }
-          - { runs-on: macos-latest, goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2, gui: true }
-          - { runs-on: macos-latest, goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3, gui: true }
-          - { runs-on: macos-latest, goos: darwin, goarch: arm64, output: arm64 }
+          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
+          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64 }
+          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1 }
+          - { goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2 }
+          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3 }
+          - { goos: darwin, goarch: arm64, output: arm64 }
 
           - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386, gui: true }
           - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat' }
