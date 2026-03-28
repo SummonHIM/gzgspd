@@ -143,6 +143,7 @@ jobs:
           GOARM: ${{matrix.jobs.goarm}}
           GOMIPS: ${{matrix.jobs.gomips}}
         run: |
+          export CGO_ENABLED=1
           cd src
           go env
           go build -v -tags gui -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s -H windowsgui" -o ../gzgspd-gui
