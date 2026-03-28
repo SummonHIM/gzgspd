@@ -24,7 +24,7 @@ jobs:
           - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1, gui: true }
           - { goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2, gui: true }
           - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3, gui: true }
-          - { goos: darwin, goarch: arm64, output: arm64, gui: true }
+          - { goos: darwin, goarch: arm64, output: arm64 }
 
           - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386, gui: true }
           - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat' }
@@ -132,6 +132,8 @@ jobs:
             gzip -c gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
             rm gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
           fi
+
+          touch gzgspd-gui
 
       - name: Build gui
         if: matrix.jobs.gui == true
