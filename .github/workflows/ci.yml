@@ -103,10 +103,8 @@ jobs:
         shell: bash
         run: |
           echo "BUILDTAG=${BUILDTAG} -H windowsgui" >> $GITHUB_ENV
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            go install github.com/akavel/rsrc@latest
-            $(go env GOPATH)\\bin\\rsrc.exe -ico src/assets/logo.ico -o src/rsrc.syso
-          fi
+          go install github.com/akavel/rsrc@latest
+          $(go env GOPATH)\\bin\\rsrc.exe -ico src/assets/logo.ico -o src/rsrc.syso
 
       - name: Setup NDK
         if: ${{ matrix.jobs.goos == 'android' }}
