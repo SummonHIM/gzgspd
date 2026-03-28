@@ -97,6 +97,12 @@ jobs:
           echo "BUILDTAG=-extldflags --static" >> $GITHUB_ENV
           echo "GOTOOLCHAIN=local" >> $GITHUB_ENV
 
+      - name: Set up environment variables in windows
+        if: ${{ matrix.jobs.goos == 'windows' }}
+        shell: bash
+        run: |
+          echo "BUILDTAG=${BUILDTAG} -H windowsgui" >> $GITHUB_ENV
+
       - name: Setup NDK
         if: ${{ matrix.jobs.goos == 'android' }}
         uses: nttld/setup-ndk@v1
@@ -148,7 +154,7 @@ jobs:
           export CGO_ENABLED=1
           cd src
           go env
-          go build -v -tags gui -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s -H windowsgui" -o ../gzgspd-gui
+          go build -v -tags gui -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s" -o ../gzgspd-gui
           cd ..
           if [ "${{matrix.jobs.goos}}" = "windows" ]; then
             cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
