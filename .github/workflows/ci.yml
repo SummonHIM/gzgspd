@@ -19,21 +19,21 @@ jobs:
     strategy:
       matrix:
         jobs:
-          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
-          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64 }
-          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1 }
-          - { goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2 }
-          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3 }
-          - { goos: darwin, goarch: arm64, output: arm64 }
+          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-compatible, gui: true } # old style file name will be removed in next released
+          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64, gui: true }
+          - { goos: darwin, goarch: amd64, goamd64: v1, output: amd64-v1, gui: true }
+          - { goos: darwin, goarch: amd64, goamd64: v2, output: amd64-v2, gui: true }
+          - { goos: darwin, goarch: amd64, goamd64: v3, output: amd64-v3, gui: true }
+          - { goos: darwin, goarch: arm64, output: arm64, gui: true }
 
-          - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386}
-          - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat' }
-          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-compatible} # old style file name will be removed in next released
-          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64, debian: amd64, rpm: x86_64, pacman: x86_64}
-          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-v1, debian: amd64, rpm: x86_64, pacman: x86_64, test: test }
-          - { goos: linux, goarch: amd64, goamd64: v2, output: amd64-v2, debian: amd64, rpm: x86_64, pacman: x86_64}
-          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64-v3, debian: amd64, rpm: x86_64, pacman: x86_64}
-          - { goos: linux, goarch: arm64, output: arm64, debian: arm64, rpm: aarch64, pacman: aarch64}  
+          - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386, gui: true }
+          - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat', gui: true }
+          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-compatible, gui: true } # old style file name will be removed in next released
+          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true }
+          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-v1, debian: amd64, rpm: x86_64, pacman: x86_64, test: test, gui: true }
+          - { goos: linux, goarch: amd64, goamd64: v2, output: amd64-v2, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true}
+          - { goos: linux, goarch: amd64, goamd64: v3, output: amd64-v3, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true}
+          - { goos: linux, goarch: arm64, output: arm64, debian: arm64, rpm: aarch64, pacman: aarch64, gui: true }  
           - { goos: linux, goarch: arm, goarm: '5', output: armv5 }
           - { goos: linux, goarch: arm, goarm: '6', output: armv6, debian: armel, rpm: armv6hl} 
           - { goos: linux, goarch: arm, goarm: '7', output: armv7, debian: armhf, rpm: armv7hl, pacman: armv7hl}
@@ -49,13 +49,13 @@ jobs:
           - { goos: linux, goarch: s390x, output: s390x, debian: s390x, rpm: s390x }
           - { goos: linux, goarch: ppc64le, output: ppc64le, debian: ppc64el, rpm: ppc64le }
 
-          - { goos: windows, goarch: '386', output: '386' }
-          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
-          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64 }
-          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-v1 }
-          - { goos: windows, goarch: amd64, goamd64: v2, output: amd64-v2 }
-          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64-v3 }
-          - { goos: windows, goarch: arm64, output: arm64 }
+          - { goos: windows, goarch: '386', output: '386', gui: true }
+          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-compatible, gui: true } # old style file name will be removed in next released
+          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64, gui: true }
+          - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-v1, gui: true }
+          - { goos: windows, goarch: amd64, goamd64: v2, output: amd64-v2, gui: true }
+          - { goos: windows, goarch: amd64, goamd64: v3, output: amd64-v3, gui: true }
+          - { goos: windows, goarch: arm64, output: arm64, gui: true }
 
           - { goos: freebsd, goarch: '386', output: '386' }
           - { goos: freebsd, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
@@ -81,7 +81,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libayatana-appindicator3-dev
+          sudo apt-get install -y gcc libgtk-3-dev libayatana-appindicator3-dev
 
       - name: Set up environment variables
         shell: bash
@@ -123,19 +123,37 @@ jobs:
           cd gzgspd
           go env
           go build -v -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s" -o ../gzgspd
-          go build -v -tags gui -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s -H windowsgui" -o ../gzgspd-gui
           cd ..
           if [ "${{matrix.jobs.goos}}" = "windows" ]; then
             cp gzgspd gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
-            cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
             zip -r gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
-            zip -r gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
           else
             cp gzgspd gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
-            cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
             gzip -c gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
+            rm gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
+          fi
+
+      - name: Build gui
+        if: matrix.jobs.gui == true
+        env:
+          GOOS: ${{matrix.jobs.goos}}
+          GOARCH: ${{matrix.jobs.goarch}}
+          GOAMD64: ${{matrix.jobs.goamd64}}
+          GO386: ${{matrix.jobs.go386}}
+          GOARM: ${{matrix.jobs.goarm}}
+          GOMIPS: ${{matrix.jobs.gomips}}
+        run: |
+          cd gzgspd
+          go env
+          go build -v -tags gui -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s -H windowsgui" -o ../gzgspd-gui
+          cd ..
+          if [ "${{matrix.jobs.goos}}" = "windows" ]; then
+            cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
+            zip -r gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
+          else
+            cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
             gzip -c gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
-            rm gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}} gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
+            rm gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
           fi
 
       - name: Package DEB
