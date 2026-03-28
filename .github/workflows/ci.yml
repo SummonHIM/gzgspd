@@ -229,9 +229,10 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: bin
+          merge-multiple: true
 
       - name: Display structure of downloaded files
         run: ls -R
