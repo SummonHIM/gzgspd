@@ -27,27 +27,27 @@ jobs:
           - { goos: darwin, goarch: arm64, output: arm64, gui: true }
 
           - { goos: linux, goarch: '386', go386: sse2, output: '386', debian: i386, rpm: i386, gui: true }
-          - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat', gui: true }
-          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-compatible, gui: true } # old style file name will be removed in next released
+          - { goos: linux, goarch: '386', go386: softfloat, output: '386-softfloat' }
+          - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-compatible } # old style file name will be removed in next released
           - { goos: linux, goarch: amd64, goamd64: v3, output: amd64, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true }
           - { goos: linux, goarch: amd64, goamd64: v1, output: amd64-v1, debian: amd64, rpm: x86_64, pacman: x86_64, test: test, gui: true }
           - { goos: linux, goarch: amd64, goamd64: v2, output: amd64-v2, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true}
           - { goos: linux, goarch: amd64, goamd64: v3, output: amd64-v3, debian: amd64, rpm: x86_64, pacman: x86_64, gui: true}
           - { goos: linux, goarch: arm64, output: arm64, debian: arm64, rpm: aarch64, pacman: aarch64, gui: true }  
           - { goos: linux, goarch: arm, goarm: '5', output: armv5 }
-          - { goos: linux, goarch: arm, goarm: '6', output: armv6, debian: armel, rpm: armv6hl} 
-          - { goos: linux, goarch: arm, goarm: '7', output: armv7, debian: armhf, rpm: armv7hl, pacman: armv7hl}
+          - { goos: linux, goarch: arm, goarm: '6', output: armv6, debian: armel, rpm: armv6hl, gui: true} 
+          - { goos: linux, goarch: arm, goarm: '7', output: armv7, debian: armhf, rpm: armv7hl, pacman: armv7hl, gui: true}
           - { goos: linux, goarch: mips, gomips: hardfloat, output: mips-hardfloat }
           - { goos: linux, goarch: mips, gomips: softfloat, output: mips-softfloat }
           - { goos: linux, goarch: mipsle, gomips: hardfloat, output: mipsle-hardfloat }
           - { goos: linux, goarch: mipsle, gomips: softfloat, output: mipsle-softfloat }
           - { goos: linux, goarch: mips64, output: mips64 }
-          - { goos: linux, goarch: mips64le, output: mips64le, debian: mips64el, rpm: mips64el }
-          - { goos: linux, goarch: loong64, output: loong64-abi1, abi: '1', debian: loongarch64, rpm: loongarch64 }
-          - { goos: linux, goarch: loong64, output: loong64-abi2, abi: '2', debian: loong64, rpm: loong64 }
-          - { goos: linux, goarch: riscv64, output: riscv64, debian: riscv64, rpm: riscv64 }
-          - { goos: linux, goarch: s390x, output: s390x, debian: s390x, rpm: s390x }
-          - { goos: linux, goarch: ppc64le, output: ppc64le, debian: ppc64el, rpm: ppc64le }
+          - { goos: linux, goarch: mips64le, output: mips64le, debian: mips64el, rpm: mips64el, gui: true }
+          - { goos: linux, goarch: loong64, output: loong64-abi1, abi: '1', debian: loongarch64, rpm: loongarch64, gui: true }
+          - { goos: linux, goarch: loong64, output: loong64-abi2, abi: '2', debian: loong64, rpm: loong64, gui: true }
+          - { goos: linux, goarch: riscv64, output: riscv64, debian: riscv64, rpm: riscv64, gui: true }
+          - { goos: linux, goarch: s390x, output: s390x, debian: s390x, rpm: s390x, gui: true }
+          - { goos: linux, goarch: ppc64le, output: ppc64le, debian: ppc64el, rpm: ppc64le, gui: true }
 
           - { goos: windows, goarch: '386', output: '386', gui: true }
           - { goos: windows, goarch: amd64, goamd64: v1, output: amd64-compatible, gui: true } # old style file name will be removed in next released
