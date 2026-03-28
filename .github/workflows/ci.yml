@@ -2,9 +2,9 @@ name: Build
 
 on:
   push:
-    paths:
-      - ".github/workflows/**"
-      - "gzgspd/**"
+    paths-ignore:
+      - "README.md"
+      - ".gitignore"
     branches: 
       - "main"
     tags: 
