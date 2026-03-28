@@ -98,11 +98,15 @@ jobs:
           echo "BUILDTAG=-extldflags --static" >> $GITHUB_ENV
           echo "GOTOOLCHAIN=local" >> $GITHUB_ENV
 
-      - name: Set up environment variables in windows
+      - name: Set up environment in windows
         if: ${{ matrix.jobs.goos == 'windows' }}
         shell: bash
         run: |
           echo "BUILDTAG=${BUILDTAG} -H windowsgui" >> $GITHUB_ENV
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            go install github.com/akavel/rsrc@latest
+            $(go env GOPATH)\\bin\\rsrc.exe -ico src/assets/logo.ico -o src/rsrc.syso
+          fi
 
       - name: Setup NDK
         if: ${{ matrix.jobs.goos == 'android' }}
@@ -139,8 +143,6 @@ jobs:
             gzip -c gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
             rm gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
           fi
-
-          touch gzgspd-gui
 
       - name: Build gui
         if: matrix.jobs.gui == true
@@ -211,11 +213,11 @@ jobs:
         with:
           name: "${{ matrix.jobs.goos }}-${{ matrix.jobs.output }}"
           path: |
-            mihomo*.gz
-            mihomo*.deb
-            mihomo*.rpm
-            mihomo*.pkg.tar.zst
-            mihomo*.zip
+            gzgspd*.gz
+            gzgspd*.deb
+            gzgspd*.rpm
+            gzgspd*.pkg.tar.zst
+            gzgspd*.zip
             version.txt
             checksums.txt
 
