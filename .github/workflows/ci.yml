@@ -102,7 +102,6 @@ jobs:
         if: ${{ matrix.jobs.goos == 'windows' }}
         shell: bash
         run: |
-          echo "BUILDTAG=${BUILDTAG} -H windowsgui" >> $GITHUB_ENV
           go install github.com/akavel/rsrc@latest
           $(go env GOPATH)/bin/rsrc -arch ${{ matrix.jobs.goarch }} -ico src/assets/logo.ico -o src/rsrc.syso
 
@@ -152,7 +151,11 @@ jobs:
           GOARM: ${{matrix.jobs.goarm}}
           GOMIPS: ${{matrix.jobs.gomips}}
         run: |
-          export CGO_ENABLED=1
+          CGO_ENABLED=1
+          if [ "$GOOS" = "windows" ]; then
+            BUILDTAG="$BUILDTAG -H windowsgui"
+          fi
+
           cd src
           go env
           go build -v -tags gui -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s" -o ../gzgspd-gui
