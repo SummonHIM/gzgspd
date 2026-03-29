@@ -89,7 +89,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME,,}-$(git rev-parse --short HEAD)"
           VERSION="${VERSION//\//-}"
-          PackageVersion=${GITHUB_RUN_ATTEMPT}
+          PackageVersion=${GITHUB_RUN_NUMBER}
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "PackageVersion=${PackageVersion}" >> $GITHUB_ENV
 
