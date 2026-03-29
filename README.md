@@ -8,12 +8,11 @@ I want you to be able to tell what it is at a glance.
 
 [GitHub Releases](https://github.com/SummonHIM/gzgspd/releases/latest)
 
-There are two different variants in windows. gzgsp meaning no terminal display. gzgspd mean daemon with terminal display.
+There are two different variants in windows. gzgspd-gui meaning no terminal display. gzgspd mean daemon with terminal display.
 
 ### Arguments
 
 - `--config`: Specify configuration file path.
-- `--daemon`: Run as daemon.
 
 ### Run as service
 
@@ -47,7 +46,7 @@ and its struct is defined as follows:
 ```Go
 type Config struct {
 	LogLevel int              `json:"log_level"` // Log level (https://go.dev/src/log/slog/level.go)
-  LogPath  string           `json:"log_path"`  // Log path
+	LogPath  string           `json:"log_path"`  // Log path
 	Instance []ConfigInstance `json:"instance"`  // Instances
 }
 
