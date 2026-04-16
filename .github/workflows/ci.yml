@@ -65,13 +65,14 @@ jobs:
           - { goos: freebsd, goarch: amd64, goamd64: v3, output: amd64-v3 }
           - { goos: freebsd, goarch: arm64, output: arm64 }
 
-          - { goos: android, goarch: '386', ndk: i686-linux-android34, output: '386' }
-          - { goos: android, goarch: amd64, ndk: x86_64-linux-android34, output: amd64 }
-          - { goos: android, goarch: arm, ndk: armv7a-linux-androideabi34, output: armv7 }
-          - { goos: android, goarch: arm64, ndk: aarch64-linux-android34, output: arm64-v8 }
+          # - { goos: android, goarch: '386', ndk: i686-linux-android34, output: '386' }
+          # - { goos: android, goarch: amd64, ndk: x86_64-linux-android34, output: amd64 }
+          # - { goos: android, goarch: arm, ndk: armv7a-linux-androideabi34, output: armv7 }
+          # - { goos: android, goarch: arm64, ndk: aarch64-linux-android34, output: arm64-v8 }
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repositories
+        uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -103,7 +104,7 @@ jobs:
         shell: bash
         run: |
           go install github.com/akavel/rsrc@latest
-          $(go env GOPATH)/bin/rsrc -arch ${{ matrix.jobs.goarch }} -ico src/assets/logo.ico -o src/rsrc.syso
+          $(go env GOPATH)/bin/rsrc -arch ${{ matrix.jobs.goarch }} -ico files/release/gzgspd-gui-logo.ico -o rsrc.syso
 
       - name: Setup NDK
         if: ${{ matrix.jobs.goos == 'android' }}
@@ -130,7 +131,7 @@ jobs:
         run: |
           cd src
           go env
-          go build -v -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s" -o ../gzgspd
+          go build -v -trimpath -ldflags "${BUILDTAG} -X 'github.com/summonhim/gzgspd/main.Version=${VERSION}' -X 'github.com/summonhim/gzgspd/main.BuildTime=${BUILDTIME}' -w -s" -o ../gzgspd
           cd ..
           if [ "${{matrix.jobs.goos}}" = "windows" ]; then
             cp gzgspd gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
@@ -139,34 +140,6 @@ jobs:
             cp gzgspd gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
             gzip -c gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
             rm gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
-          fi
-
-      - name: Build gui
-        if: matrix.jobs.gui == true
-        env:
-          GOOS: ${{matrix.jobs.goos}}
-          GOARCH: ${{matrix.jobs.goarch}}
-          GOAMD64: ${{matrix.jobs.goamd64}}
-          GO386: ${{matrix.jobs.go386}}
-          GOARM: ${{matrix.jobs.goarm}}
-          GOMIPS: ${{matrix.jobs.gomips}}
-        run: |
-          CGO_ENABLED=1
-          if [ "$GOOS" = "windows" ]; then
-            BUILDTAG="$BUILDTAG -H windowsgui"
-          fi
-
-          cd src
-          go env
-          go build -v -tags gui -trimpath -ldflags "${BUILDTAG} -X 'main.Version=${VERSION}' -w -s" -o ../gzgspd-gui
-          cd ..
-          if [ "${{matrix.jobs.goos}}" = "windows" ]; then
-            cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
-            zip -r gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
-          else
-            cp gzgspd-gui gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
-            gzip -c gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}} > gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.gz
-            rm gzgspd-gui-${{matrix.jobs.goos}}-${{matrix.jobs.output}}
           fi
 
       - name: Package DEB

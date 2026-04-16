@@ -1,4 +1,4 @@
-package main
+package executor
 
 import (
 	"fmt"
@@ -7,10 +7,14 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/summonhim/gzgspd/config"
+	"github.com/summonhim/gzgspd/nnet"
+	"github.com/summonhim/gzgspd/portal"
 )
 
 type WorkerInstance struct {
-	ConfigInstance
+	config.ConfigInstance
 	LoginIf      string
 	LoginIfIP    string
 	LoginScheme  string
@@ -52,10 +56,10 @@ func (w *WorkerInstance) GetStringFallback(val string, defaultVal string) string
 	return defaultVal
 }
 
-func doLogin(instance *WorkerInstance, statusKey string, flags *Flags) bool {
+func doLogin(instance *WorkerInstance, statusKey string) bool {
 	// 检查是否需要登录
 	slog.Debug(fmt.Sprintf("[%s] Checking portal if login is required.", statusKey))
-	needLogin, needLoginUrl := TelecomPortalChecker(
+	needLogin, needLoginUrl := portal.TelecomPortalChecker(
 		instance.LoginIfIP,
 		instance.KAliveLink,
 	)
@@ -95,7 +99,7 @@ func doLogin(instance *WorkerInstance, statusKey string, flags *Flags) bool {
 		instance.Rand = tRand
 
 		// 获取登录基本信息
-		portalConfig, err := TelecomPortalJsonAction(
+		portalConfig, err := portal.TelecomPortalJsonAction(
 			instance.LoginIfIP,
 			instance.LoginScheme,
 			instance.LoginHost,
@@ -124,7 +128,7 @@ func doLogin(instance *WorkerInstance, statusKey string, flags *Flags) bool {
 		instance.UUID = portalConfig.PortalConfig.UUID
 
 		// 登录
-		loginStat, err := TelecomQuickAuth(
+		loginStat, err := portal.TelecomQuickAuth(
 			instance.LoginIfIP,
 			instance.LoginScheme,
 			instance.LoginHost,
@@ -171,14 +175,14 @@ func doLogin(instance *WorkerInstance, statusKey string, flags *Flags) bool {
 	return true
 }
 
-func doLogout(instance *WorkerInstance, statusKey string, flags *Flags) {
+func doLogout(instance *WorkerInstance, statusKey string) {
 	WorkerStatusLock.Lock()
 	WorkerStatus[statusKey] = StateLoggingOut
 	WorkerStatusLock.Unlock()
 
 	slog.Info(fmt.Sprintf("[%s] Logging out...", statusKey))
 
-	tMac, _ := GetIPMAC(instance.LoginIfIP)
+	tMac, _ := nnet.GetIPMAC(instance.LoginIfIP)
 
 	if instance.Version == 0 {
 		instance.Version = 4
@@ -187,7 +191,7 @@ func doLogout(instance *WorkerInstance, statusKey string, flags *Flags) {
 		instance.GroupID = 19
 	}
 
-	logoutStat, err := TelecomQuickAuthDisconn(
+	logoutStat, err := portal.TelecomQuickAuthDisconn(
 		instance.LoginIfIP,
 		instance.GetStringFallback(instance.LoginScheme, "https"),
 		instance.GetStringFallback(instance.LoginHost, "10.20.16.5"),
@@ -216,25 +220,25 @@ func doLogout(instance *WorkerInstance, statusKey string, flags *Flags) {
 func parseInterface(instanceIf string) (string, string, string, error) {
 	if instanceIf == "" {
 		// 如果为空
-		ifname, ip, mac, err := GetDefaultIfIP()
+		ifname, ip, mac, err := nnet.GetDefaultIfIP()
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to get default interface ip: %v", err)
 		}
 		return ifname, ip, mac, nil
 	} else if net.ParseIP(instanceIf) == nil {
 		// 如果不为 IP 地址
-		ip, err := GetIfIP(instanceIf)
+		ip, err := nnet.GetIfIP(instanceIf)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to get interface '%s' ip: %v", instanceIf, err)
 		}
-		mac, err := GetIfMAC(instanceIf)
+		mac, err := nnet.GetIfMAC(instanceIf)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to get interface '%s' mac: %v", instanceIf, err)
 		}
 		return instanceIf, ip, mac, nil
 	} else {
 		// 如果是 IP 地址
-		mac, err := GetIPMAC(instanceIf)
+		mac, err := nnet.GetIPMAC(instanceIf)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to get interface '%s' mac: %v", instanceIf, err)
 		}
@@ -243,7 +247,7 @@ func parseInterface(instanceIf string) (string, string, string, error) {
 }
 
 // 工作函数
-func worker(cfg ConfigInstance, statusKey string, quitSender <-chan struct{}, flags *Flags) {
+func Worker(cfg config.ConfigInstance, statusKey string, quitSender <-chan struct{}) {
 	slog.Info(fmt.Sprintf("[%s] Starting instance %s", statusKey, statusKey))
 	// 将配置写入当前内存中
 	instance := &WorkerInstance{
@@ -283,12 +287,12 @@ loop:
 		case <-quitSender:
 			// 收到退出信号
 			quitSignal = true
-			doLogout(instance, statusKey, flags)
+			doLogout(instance, statusKey)
 			break loop
 		default:
 			// 自动更新默认网口
 			if instance.Interface == "" {
-				now_if, now_ip, now_mac, err := GetDefaultIfIP()
+				now_if, now_ip, now_mac, err := nnet.GetDefaultIfIP()
 				if err != nil {
 					slog.Error(fmt.Sprintf("[%s] Error parsing interface: failed to get default interface ip: %v", statusKey, err))
 				}
@@ -302,7 +306,7 @@ loop:
 
 			if !quitSignal {
 				// 正常执行登录逻辑
-				if doLogin(instance, statusKey, flags) {
+				if doLogin(instance, statusKey) {
 					retry = 0
 				} else {
 					retry++

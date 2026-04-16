@@ -1,4 +1,4 @@
-package main
+package portal
 
 import (
 	"bytes"
@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/robertkrimen/otto"
+
+	"github.com/summonhim/gzgspd/nnet"
 )
 
 // ActionResponse PortalJsonAction 返回的结构
@@ -152,7 +154,7 @@ func TelecomPortalJsonAction(
 	req.Header.Set("Accept-Language", "zh-CN")
 
 	// 发起请求
-	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
+	client, err := nnet.NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +231,7 @@ func TelecomQuickAuth(
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
 
 	// 发起请求
-	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
+	client, err := nnet.NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +297,7 @@ func TelecomQuickAuthDisconn(
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
 
 	// 发起请求
-	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
+	client, err := nnet.NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +324,7 @@ func TelecomQuickAuthDisconn(
 
 // TelecomPortalChecker 检查当前网络是否需要登录，若为是则返回登录链接
 func TelecomPortalChecker(requestIP string, kAliveLink string) (bool, string) {
-	client, err := NewHttpClientBindIP(requestIP, 5*time.Second)
+	client, err := nnet.NewHttpClientBindIP(requestIP, 5*time.Second)
 	if err != nil {
 		return false, ""
 	}

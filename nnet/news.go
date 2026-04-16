@@ -1,6 +1,6 @@
 //go:build windows || darwin || freebsd
 
-package main
+package nnet
 
 import (
 	"context"

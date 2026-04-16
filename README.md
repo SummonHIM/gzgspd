@@ -8,11 +8,11 @@ I want you to be able to tell what it is at a glance.
 
 [GitHub Releases](https://github.com/SummonHIM/gzgspd/releases/latest)
 
-There are two different variants in windows. gzgspd-gui meaning no terminal display. gzgspd mean daemon with terminal display.
-
 ### Arguments
 
 - `--config`: Specify configuration file path.
+- `--version`: Display current version of gzgspd.
+- `--test`: Test configuration and exit.
 
 ### Run as service
 
@@ -25,17 +25,17 @@ The configuration file uses JSON format, as shown below:
 
 ```Json
 {
-  "log_level": 0,
-  "log_path": "daemon.log",
-  "instance": [
+  "log_level": 0,           // Log level (https://go.dev/src/log/slog/level.go)
+  "log_path": "daemon.log", // Log path
+  "instance": [             // Instances
     {
-      "username": "13412345678",
-      "password": "123456",
-      "interface": "",
-      "keep_alive": 5,
-      "keep_alive_link": "http://3.3.3.3",
-      "retry_max": 3,
-      "retry_time": 5
+      "username": "13412345678",           // User name
+      "password": "123456",                // Password
+      "interface": "",                     // Network interface for sending HTTP data (Empty: Automatically detect)
+      "keep_alive": 5,                     // User agent for sending HTTP data (Empty: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
+      "keep_alive_link": "http://3.3.3.3", // keep-alive link (Empty: "http://3.3.3.3")
+      "retry_max": 3,                      // Max retries. If exceeded, wait 10 minutes.
+      "retry_time": 5                      // Retry interval
     }
   ]
 }

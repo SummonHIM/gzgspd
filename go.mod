@@ -1,4 +1,4 @@
-module gzgspd
+module github.com/summonhim/gzgspd
 
 go 1.25.0
 
