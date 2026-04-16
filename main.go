@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/summonhim/gzgspd/config"
 	"github.com/summonhim/gzgspd/executor"
@@ -17,7 +16,7 @@ import (
 
 var (
 	Version   string = "dev"
-	BuildTime int64  = 0
+	BuildTime string = "0"
 )
 
 func runAsDaemon(ConfigFile string) error {
@@ -73,14 +72,13 @@ func main() {
 	config.ParseFlags(flags)
 
 	if flags.ActionShowVersion {
-		formattedBuildTime := time.Unix(BuildTime, 0)
 		fmt.Printf(
 			"gzgspd %s %s %s with %s %s\n",
 			Version,
 			runtime.GOOS,
 			runtime.GOARCH,
 			runtime.Version(),
-			formattedBuildTime.Format("2006-01-02 15:04:05"),
+			BuildTime,
 		)
 		os.Exit(0)
 	}
