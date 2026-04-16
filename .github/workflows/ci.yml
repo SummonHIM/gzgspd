@@ -129,10 +129,8 @@ jobs:
           GOARM: ${{matrix.jobs.goarm}}
           GOMIPS: ${{matrix.jobs.gomips}}
         run: |
-          cd src
           go env
-          go build -v -trimpath -ldflags "${BUILDTAG} -X 'github.com/summonhim/gzgspd/main.Version=${VERSION}' -X 'github.com/summonhim/gzgspd/main.BuildTime=${BUILDTIME}' -w -s" -o ../gzgspd
-          cd ..
+          go build -v -trimpath -ldflags "${BUILDTAG} -X 'github.com/summonhim/gzgspd/main.Version=${VERSION}' -X 'github.com/summonhim/gzgspd/main.BuildTime=${BUILDTIME}' -w -s" -o gzgspd
           if [ "${{matrix.jobs.goos}}" = "windows" ]; then
             cp gzgspd gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
             zip -r gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}-${VERSION}.zip gzgspd-${{matrix.jobs.goos}}-${{matrix.jobs.output}}.exe
