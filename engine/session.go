@@ -297,13 +297,26 @@ func (s *Session) prepareInterfaceImpl() error {
 	return nil
 }
 
-// attemptLogin 执行一轮探测+登录，返回 nil 表示已在线或登录成功。
+// attemptLogin 执行一轮探测+登录。
+//
+// 返回 nil 表示本轮无需登录或登录成功。
+//
+// 关于 keep-alive 探测错误：配置里的 keep_alive_link（默认 http://3.3.3.3）是一个
+// 诱饵地址，用于触发校园网关的重定向，它在未登录和已登录状态下都可能不可达
+// （超时/连接失败）。真正的"需要登录"信号是被重定向到 portal 页面，而不是能否
+// 连通诱饵地址。因此探测返回错误时，既不能判定为"在线"，也不能判定为"登录失败"
+// ——不能触发重试计数，否则已登录的会话会被反复判失败并最终进入暂停。
+// 这里与重构前的 executor/worker.go 行为保持一致：探测错误按"本轮无需登录"处理。
 func (s *Session) attemptLogin(ctx context.Context) error {
 	dialer := s.dialer
 
 	needLogin, needLoginURL, err := dialer.PortalChecker(ctx, s.cfg.KAliveLink)
 	if err != nil {
-		return fmt.Errorf("portal check: %w", err)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		s.logger.Debug("keep-alive probe failed; assuming online", "error", err)
+		return nil
 	}
 	if !needLogin || needLoginURL == "" {
 		return nil

@@ -148,19 +148,57 @@ func TestSessionContextCancelIsFast(t *testing.T) {
 	}
 }
 
-func TestSessionCheckerErrorDoesNotLogin(t *testing.T) {
-	d := &fakeDialer{checkErr: errors.New("network down")}
+func TestSessionCheckerUnreachableIsNotFailure(t *testing.T) {
+	// 3.3.3.3 是诱饵地址：未登录时超时是正常表现，不能当成登录失败。
+	// 旧实现（executor/worker.go）把探测错误视作"无需登录"，本轮成功、重试清零。
+	// 回归：探测报错不应导致状态进入 Not logged in(login failed) 或 Paused。
+	d := &fakeDialer{checkErr: errors.New("dial tcp 3.3.3.3:80: i/o timeout")}
 	inst := config.ConfigInstance{Username: "u", Password: "p", Interface: "lo", KeepAlive: 1, RetryTime: 1, RetryMax: 1}
 	s := newTestSession(t, inst, 50*time.Millisecond, d)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() { _ = s.Start(ctx) }()
-	time.Sleep(300 * time.Millisecond)
-	cancel()
-	time.Sleep(100 * time.Millisecond)
 
+	// 若被误判为失败，RetryMax=1 且 pause=50ms 会很快进入 Paused
+	time.Sleep(400 * time.Millisecond)
+
+	if st := s.State(); st == StatePaused {
+		t.Fatal("unreachable keep-alive link must not be treated as login failure (state became Paused)")
+	}
 	if d.authCalls.Load() != 0 {
-		t.Fatalf("expected no auth attempts when checker fails, got %d", d.authCalls.Load())
+		t.Fatalf("expected no auth attempts when checker is unreachable, got %d", d.authCalls.Load())
+	}
+}
+
+func TestSessionRealCheckStillFails(t *testing.T) {
+	// 真正需要登录时，登录失败仍应触发重试与暂停逻辑。
+	d := &fakeDialer{
+		needLogin: true,
+		loginURL:  "http://p/portal.do?a=1",
+		authErr:   errors.New("boom"),
+	}
+	inst := config.ConfigInstance{Username: "u", Password: "p", Interface: "lo", KeepAlive: 1, RetryTime: 1, RetryMax: 1}
+	s := newTestSession(t, inst, 50*time.Millisecond, d)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = s.Start(ctx) }()
+
+	deadline := time.After(3 * time.Second)
+	for {
+		if s.State() == StatePaused {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("expected Paused after real login failures")
+		default:
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if d.authCalls.Load() == 0 {
+		t.Fatal("expected auth attempts for real login failure")
 	}
 }
 
