@@ -32,10 +32,10 @@ The configuration file uses JSON format, as shown below:
       "username": "13412345678",           // User name
       "password": "123456",                // Password
       "interface": "",                     // Network interface for sending HTTP data (Empty: Automatically detect)
-      "keep_alive": 5,                     // User agent for sending HTTP data (Empty: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
+      "keep_alive": 5,                     // Interval for the keep-alive check (seconds)
       "keep_alive_link": "http://3.3.3.3", // keep-alive link (Empty: "http://3.3.3.3")
-      "retry_max": 3,                      // Max retries. If exceeded, wait 10 minutes.
-      "retry_time": 5                      // Retry interval
+      "retry_max": 3,                      // Max consecutive failures before pausing 10 minutes (0: unlimited)
+      "retry_time": 5                      // Interval between retries after a failure (seconds)
     }
   ]
 }
@@ -55,9 +55,9 @@ type ConfigInstance struct {
 	Password   string `json:"password"`        // Password
 	Interface  string `json:"interface"`       // Network interface for sending HTTP data (Empty: Automatically detect)
 	UserAgent  string `json:"user_agent"`      // User agent for sending HTTP data (Empty: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
-	KeepAlive  int    `json:"keep_alive"`      // Interval for sending keep-alive
+	KeepAlive  int    `json:"keep_alive"`      // Interval for the keep-alive check (seconds)
 	KAliveLink string `json:"keep_alive_link"` // keep-alive link (Empty: "http://3.3.3.3")
-	RetryMax   int    `json:"retry_max"`       // Max retries. If exceeded, wait 10 minutes.
-	RetryTime  int    `json:"retry_time"`      // Retry interval
+	RetryMax   int    `json:"retry_max"`       // Max consecutive failures before pausing 10 minutes (0: unlimited)
+	RetryTime  int    `json:"retry_time"`      // Interval between retries after a failure (seconds)
 }
 ```

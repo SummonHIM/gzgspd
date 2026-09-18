@@ -120,6 +120,12 @@ jobs:
           echo "CGO_ENABLED=1" >> $GITHUB_ENV
           echo "BUILDTAG=" >> $GITHUB_ENV
 
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./... -count=1
+
       - name: Build core
         env:
           GOOS: ${{matrix.jobs.goos}}
