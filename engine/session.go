@@ -48,6 +48,7 @@ type Session struct {
 
 	mu     sync.RWMutex
 	state  State
+	paused bool
 	dialer sessionDialer
 	click  chan struct{} // Pause/Resume/唤醒 信号
 
@@ -125,7 +126,7 @@ func (s *Session) setState(st State, msg string, err error) {
 func (s *Session) isPaused() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.state == StatePaused
+	return s.paused
 }
 
 // Start 运行状态机，阻塞至 ctx 取消并完成登出。
@@ -215,7 +216,7 @@ func (s *Session) Start(ctx context.Context) error {
 	}
 }
 
-// wait 等待 d 或 ctx 取消/唤醒信号，返回 true 表示等待完成，false 表示应重新评估循环。
+// wait 等待 d，或提前被 ctx 取消/唤醒信号中断。返回 true 表示等待完成。
 func (s *Session) wait(ctx context.Context, d time.Duration) bool {
 	t := time.NewTimer(d)
 	defer t.Stop()
@@ -229,8 +230,11 @@ func (s *Session) wait(ctx context.Context, d time.Duration) bool {
 	}
 }
 
-// Pause 请求暂停登录。
+// Pause 请求暂停登录（用户手动暂停）。
 func (s *Session) Pause() {
+	s.mu.Lock()
+	s.paused = true
+	s.mu.Unlock()
 	s.setState(StatePaused, "paused by request", nil)
 	select {
 	case s.click <- struct{}{}:
@@ -240,6 +244,9 @@ func (s *Session) Pause() {
 
 // Resume 从暂停恢复。
 func (s *Session) Resume() {
+	s.mu.Lock()
+	s.paused = false
+	s.mu.Unlock()
 	s.setState(StateNotLoggedIn, "resumed", nil)
 	select {
 	case s.click <- struct{}{}:

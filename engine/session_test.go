@@ -163,3 +163,42 @@ func TestSessionCheckerErrorDoesNotLogin(t *testing.T) {
 		t.Fatalf("expected no auth attempts when checker fails, got %d", d.authCalls.Load())
 	}
 }
+
+func TestSessionManualPauseStopsAttempts(t *testing.T) {
+	d := &fakeDialer{needLogin: false}
+	inst := config.ConfigInstance{Username: "u", Password: "p", Interface: "lo", KeepAlive: 1, RetryTime: 1}
+	s := newTestSession(t, inst, time.Minute, d)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = s.Start(ctx) }()
+
+	// 先让它正常跑几轮
+	time.Sleep(100 * time.Millisecond)
+	s.Pause()
+	time.Sleep(50 * time.Millisecond)
+
+	if s.State() != StatePaused {
+		t.Fatalf("expected Paused after Pause(), got %v", s.State())
+	}
+
+	// 暂停后不应再调用登录相关网络动作
+	before := d.authCalls.Load() + d.disconnCall.Load()
+	time.Sleep(200 * time.Millisecond)
+	after := d.authCalls.Load() + d.disconnCall.Load()
+	if after != before {
+		t.Fatalf("expected no network activity while paused, before=%d after=%d", before, after)
+	}
+
+	// Resume 后应恢复为未登录状态并继续
+	s.Resume()
+	deadline := time.After(2 * time.Second)
+	for s.State() != StateNotLoggedIn {
+		select {
+		case <-deadline:
+			t.Fatalf("session did not resume, state=%v", s.State())
+		default:
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
