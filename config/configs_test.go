@@ -7,6 +7,15 @@ import (
 	"time"
 )
 
+func TestKeyIfName(t *testing.T) {
+	if got := (ConfigInstance{}).KeyIfName(); got != "Auto" {
+		t.Fatalf("empty interface should yield Auto, got %q", got)
+	}
+	if got := (ConfigInstance{Interface: "wanmac0"}).KeyIfName(); got != "wanmac0" {
+		t.Fatalf("expected wanmac0, got %q", got)
+	}
+}
+
 func TestValidateRejects(t *testing.T) {
 	base := func() *Config {
 		return &Config{Instance: []ConfigInstance{{

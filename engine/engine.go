@@ -58,7 +58,7 @@ func New(cfg *config.Config, opts Options) (*Engine, error) {
 	for _, inst := range cfg.Instance {
 		s := newSession(sessionConfig{
 			inst:   inst,
-			key:    inst.Username + "@" + keyIfName(inst),
+			key:    inst.Username + "@" + inst.KeyIfName(),
 			logger: logger,
 			pause:  cfg.PauseDuration(),
 			events: e.events,
@@ -117,11 +117,4 @@ func (e *Engine) Stop() {
 	if cancel != nil {
 		cancel()
 	}
-}
-
-func keyIfName(inst config.ConfigInstance) string {
-	if inst.Interface == "" {
-		return "Auto"
-	}
-	return inst.Interface
 }

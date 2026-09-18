@@ -58,6 +58,14 @@ func (c *Config) Save() error {
 	return os.WriteFile(c.filePath, data, 0o644)
 }
 
+// KeyIfName 返回该实例用于标识的身份串：配置了接口则用之，否则为 Auto。
+func (inst ConfigInstance) KeyIfName() string {
+	if inst.Interface == "" {
+		return "Auto"
+	}
+	return inst.Interface
+}
+
 // Validate 校验配置内容
 func (c *Config) Validate() error {
 	if len(c.Instance) == 0 {

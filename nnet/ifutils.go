@@ -3,8 +3,6 @@ package nnet
 import (
 	"fmt"
 	"net"
-
-	"github.com/summonhim/gzgspd/config"
 )
 
 // GetIfIP 传入接口名称，返回 IPv4 地址
@@ -86,12 +84,4 @@ func GetIPMAC(ip string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no interface found for ip")
-}
-
-// GetKeyIfName 从配置中获取接口字符串，为空则为Auto
-func GetKeyIfName(instance config.ConfigInstance) string {
-	if instance.Interface == "" {
-		return "Auto"
-	}
-	return instance.Interface
 }

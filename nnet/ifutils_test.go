@@ -2,18 +2,7 @@ package nnet
 
 import (
 	"testing"
-
-	"github.com/summonhim/gzgspd/config"
 )
-
-func TestGetKeyIfName(t *testing.T) {
-	if got := GetKeyIfName(config.ConfigInstance{}); got != "Auto" {
-		t.Fatalf("empty interface should yield Auto, got %q", got)
-	}
-	if got := GetKeyIfName(config.ConfigInstance{Interface: "wanmac0"}); got != "wanmac0" {
-		t.Fatalf("expected wanmac0, got %q", got)
-	}
-}
 
 func TestGetIPMACInvalid(t *testing.T) {
 	if _, err := GetIPMAC("not-an-ip"); err == nil {
