@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 )
 
 // ConfigInstance 单个实例配置
@@ -23,6 +24,38 @@ type Config struct {
 	LogLevel int              `json:"log_level"`
 	LogPath  string           `json:"log_path"`
 	Instance []ConfigInstance `json:"instance"`
+
+	// PauseDurationSeconds 覆盖连续失败达到上限后的暂停时长（秒），为 0 时使用默认 10 分钟。
+	PauseDurationSeconds int `json:"-"`
+
+	// filePath 记录配置的加载来源路径，供 Save 使用，不参与序列化。
+	filePath string
+}
+
+// FilePath 返回该配置的加载来源路径，可能为空。
+func (c *Config) FilePath() string { return c.filePath }
+
+// SetFilePath 记录配置来源路径，供 Save 使用。
+func (c *Config) SetFilePath(path string) { c.filePath = path }
+
+// PauseDuration 返回连续失败达到上限后的暂停时长，默认 10 分钟。
+func (c *Config) PauseDuration() time.Duration {
+	if c.PauseDurationSeconds > 0 {
+		return time.Duration(c.PauseDurationSeconds) * time.Second
+	}
+	return 10 * time.Minute
+}
+
+// Save 将配置写回其来源路径，使用缩进 JSON。
+func (c *Config) Save() error {
+	if c.filePath == "" {
+		return fmt.Errorf("config file path is not set")
+	}
+	data, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(c.filePath, data, 0o644)
 }
 
 // Validate 校验配置内容
@@ -69,5 +102,6 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	cfg.filePath = path
 	return &cfg, nil
 }
