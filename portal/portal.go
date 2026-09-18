@@ -2,6 +2,7 @@ package portal
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -117,244 +118,220 @@ type QuickAuthResponse struct {
 	OperatingBindCtrlList []interface{} `json:"operatingBindCtrlList"`
 }
 
-// TelecomPortalJsonAction 获取登录的基本信息
-func TelecomPortalJsonAction(
-	requestIP string,
-	scheme string,
-	host string,
-	user_agent string,
-	wlanuserip string,
-	wlanacname string,
-	mac string,
-	vlan string,
-	hostname string,
-	randStr string,
-) (*ActionResponse, error) {
-	// 构造 URL 参数
+// Client 是绑定到某个本地 IP 的 Portal 协议客户端，可复用于多次请求。
+type Client struct {
+	http *http.Client
+}
+
+// NewClient 构造绑定本地 IP 的客户端。
+func NewClient(localIP string, timeout time.Duration) (*Client, error) {
+	hc, err := nnet.NewHttpClientBindIP(localIP, timeout)
+	if err != nil {
+		return nil, err
+	}
+	return &Client{http: hc}, nil
+}
+
+// Close 释放空闲连接。
+func (c *Client) Close() {
+	if c.http != nil {
+		if tr, ok := c.http.Transport.(*http.Transport); ok {
+			tr.CloseIdleConnections()
+		}
+	}
+}
+
+// doJSON 执行请求并将响应体解析到 out，非 2xx 视为错误。
+func (c *Client) doJSON(req *http.Request, out any) error {
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("%s %s: unexpected status %d: %s", req.Method, req.URL, resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	if err := json.Unmarshal(body, out); err != nil {
+		return fmt.Errorf("%s %s: decode response: %w", req.Method, req.URL, err)
+	}
+	return nil
+}
+
+func setCommonHeaders(req *http.Request, userAgent string) {
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/json, text/javascript, */*; q=0.01")
+	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
+}
+
+// ActionRequest 是 PortalJsonAction 的请求参数。
+type ActionRequest struct {
+	Scheme     string
+	Host       string
+	UserAgent  string
+	Wlanuserip string
+	Wlanacname string
+	MAC        string
+	VLAN       string
+	Hostname   string
+	Rand       string
+}
+
+// PortalJsonAction 获取登录的基本信息
+func (c *Client) PortalJsonAction(ctx context.Context, r ActionRequest) (*ActionResponse, error) {
 	params := url.Values{}
-	params.Set("wlanuserip", wlanuserip)
-	params.Set("wlanacname", wlanacname)
-	params.Set("mac", mac)
-	params.Set("vlan", vlan)
-	params.Set("hostname", hostname)
-	params.Set("rand", randStr)
+	params.Set("wlanuserip", r.Wlanuserip)
+	params.Set("wlanacname", r.Wlanacname)
+	params.Set("mac", r.MAC)
+	params.Set("vlan", r.VLAN)
+	params.Set("hostname", r.Hostname)
+	params.Set("rand", r.Rand)
 	params.Set("viewStatus", "1")
 
-	fullURL := scheme + "://" + host + "/PortalJsonAction.do?" + params.Encode()
-
-	// 创建请求
-	req, err := http.NewRequest("GET", fullURL, nil)
+	fullURL := r.Scheme + "://" + r.Host + "/PortalJsonAction.do?" + params.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
+	setCommonHeaders(req, r.UserAgent)
 
-	// 设置请求头
-	req.Header.Set("User-Agent", user_agent)
-	req.Header.Set("Accept", "application/json, text/javascript, */*; q=0.01")
-	req.Header.Set("Accept-Language", "zh-CN")
-
-	// 发起请求
-	client, err := nnet.NewHttpClientBindIP(requestIP, 5*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// 读取响应
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// 解析 JSON 到 struct
 	var result ActionResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := c.doJSON(req, &result); err != nil {
 		return nil, err
 	}
-
 	return &result, nil
 }
 
-// TelecomQuickAuth 登录
-func TelecomQuickAuth(
-	requestIP string,
-	scheme string,
-	host string,
-	user_agent string,
-	userid string,
-	passwd string,
-	wlanuserip string,
-	wlanacname string,
-	wlanacIp string,
-	vlan string,
-	mac string,
-	version int,
-	portalpageid int,
-	timestamp int64,
-	uuid string,
-	portaltype string,
-	hostname string,
-	rand string,
-) (*QuickAuthResponse, error) {
-	// 构造 URL 参数
+// QuickAuthRequest 是 QuickAuth 的请求参数。
+type QuickAuthRequest struct {
+	Scheme       string
+	Host         string
+	UserAgent    string
+	UserID       string
+	Password     string
+	Wlanuserip   string
+	Wlanacname   string
+	WlanacIP     string
+	VLAN         string
+	MAC          string
+	Version      int
+	PortalPageID int
+	Timestamp    int64
+	UUID         string
+	PortalType   string
+	Hostname     string
+	Rand         string
+}
+
+// QuickAuth 执行 portal 登录。
+func (c *Client) QuickAuth(ctx context.Context, r QuickAuthRequest) (*QuickAuthResponse, error) {
 	params := url.Values{}
-	params.Set("userid", userid)
-	params.Set("passwd", passwd)
-	params.Set("wlanuserip", wlanuserip)
-	params.Set("wlanacname", wlanacname)
-	params.Set("wlanacIp", wlanacIp)
-	params.Set("vlan", vlan)
-	params.Set("mac", mac)
-	params.Set("version", fmt.Sprintf("%d", version))
-	params.Set("portalpageid", fmt.Sprintf("%d", portalpageid))
-	params.Set("timestamp", fmt.Sprintf("%d", timestamp))
-	params.Set("uuid", uuid)
-	params.Set("portaltype", portaltype)
-	params.Set("hostname", hostname)
-	params.Set("rand", rand)
+	params.Set("userid", r.UserID)
+	params.Set("passwd", r.Password)
+	params.Set("wlanuserip", r.Wlanuserip)
+	params.Set("wlanacname", r.Wlanacname)
+	params.Set("wlanacIp", r.WlanacIP)
+	params.Set("vlan", r.VLAN)
+	params.Set("mac", r.MAC)
+	params.Set("version", fmt.Sprintf("%d", r.Version))
+	params.Set("portalpageid", fmt.Sprintf("%d", r.PortalPageID))
+	params.Set("timestamp", fmt.Sprintf("%d", r.Timestamp))
+	params.Set("uuid", r.UUID)
+	params.Set("portaltype", r.PortalType)
+	params.Set("hostname", r.Hostname)
+	params.Set("rand", r.Rand)
 
-	fullURL := scheme + "://" + host + "/quickauth.do?" + params.Encode()
-
-	// 创建请求
-	req, err := http.NewRequest("GET", fullURL, nil)
+	fullURL := r.Scheme + "://" + r.Host + "/quickauth.do?" + params.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
+	setCommonHeaders(req, r.UserAgent)
 
-	// 设置请求头
-	req.Header.Set("User-Agent", user_agent)
-	req.Header.Set("Accept", "application/json, text/javascript, */*; q=0.01")
-	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
-
-	// 发起请求
-	client, err := nnet.NewHttpClientBindIP(requestIP, 5*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// 读取响应
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// 解析 JSON
 	var result QuickAuthResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := c.doJSON(req, &result); err != nil {
 		return nil, err
 	}
-
 	return &result, nil
 }
 
-// TelecomQuickAuthDisconn 登出
-func TelecomQuickAuthDisconn(
-	requestIP string,
-	scheme string,
-	host string,
-	user_agent string,
-	wlanacip string,
-	wlanuserip string,
-	wlanacname string,
-	version int,
-	portaltype string,
-	userid string,
-	mac string,
-	groupId int,
-	clearOperator string,
-) (*QuickAuthResponse, error) {
-	// 构造表单数据
+// DisconnRequest 是 QuickAuthDisconn 的请求参数。
+type DisconnRequest struct {
+	Scheme        string
+	Host          string
+	UserAgent     string
+	WlanacIP      string
+	Wlanuserip    string
+	Wlanacname    string
+	Version       int
+	PortalType    string
+	UserID        string
+	MAC           string
+	GroupID       int
+	ClearOperator string
+}
+
+// QuickAuthDisconn 执行 portal 登出。
+func (c *Client) QuickAuthDisconn(ctx context.Context, r DisconnRequest) (*QuickAuthResponse, error) {
 	data := url.Values{}
-	data.Set("wlanacip", wlanacip)
-	data.Set("wlanuserip", wlanuserip)
-	data.Set("wlanacname", wlanacname)
-	data.Set("version", fmt.Sprintf("%d", version))
-	data.Set("portaltype", portaltype)
-	data.Set("userid", userid)
-	data.Set("mac", mac)
-	data.Set("groupId", fmt.Sprintf("%d", groupId))
-	data.Set("clearOperator", clearOperator)
+	data.Set("wlanacip", r.WlanacIP)
+	data.Set("wlanuserip", r.Wlanuserip)
+	data.Set("wlanacname", r.Wlanacname)
+	data.Set("version", fmt.Sprintf("%d", r.Version))
+	data.Set("portaltype", r.PortalType)
+	data.Set("userid", r.UserID)
+	data.Set("mac", r.MAC)
+	data.Set("groupId", fmt.Sprintf("%d", r.GroupID))
+	data.Set("clearOperator", r.ClearOperator)
 
-	// 创建 POST 请求
-	req, err := http.NewRequest("POST", scheme+"://"+host+"/quickauthdisconn.do", bytes.NewBufferString(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.Scheme+"://"+r.Host+"/quickauthdisconn.do", bytes.NewBufferString(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
-
-	// 设置请求头
-	req.Header.Set("User-Agent", user_agent)
-	req.Header.Set("Accept", "application/json, text/javascript, */*; q=0.01")
+	setCommonHeaders(req, r.UserAgent)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6")
 
-	// 发起请求
-	client, err := nnet.NewHttpClientBindIP(requestIP, 5*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	// 读取响应
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// 解析 JSON
 	var result QuickAuthResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := c.doJSON(req, &result); err != nil {
 		return nil, err
 	}
-
 	return &result, nil
 }
 
-// TelecomPortalChecker 检查当前网络是否需要登录，若为是则返回登录链接
-func TelecomPortalChecker(requestIP string, kAliveLink string) (bool, string) {
-	client, err := nnet.NewHttpClientBindIP(requestIP, 5*time.Second)
+// PortalChecker 探测当前网络是否需要登录。返回错误表示探测本身失败，而非"在线"。
+func (c *Client) PortalChecker(ctx context.Context, kAliveLink string) (bool, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, kAliveLink, nil)
 	if err != nil {
-		return false, ""
+		return false, "", err
 	}
-
-	resp, err := client.Get(kAliveLink)
+	resp, err := c.http.Do(req)
 	if err != nil {
-		return false, ""
+		return false, "", err
 	}
 	defer resp.Body.Close()
 
-	// 定义 portal 关键字
 	portalKeywords := []string{"portalScript.do", "portal.do"}
 
-	// 1️⃣ 检测 3xx 重定向
+	// 1) 检测 3xx 重定向
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		loc, err := resp.Location()
-		if err == nil {
+		if loc, err := resp.Location(); err == nil {
 			for _, kw := range portalKeywords {
 				if strings.Contains(loc.String(), kw) {
-					return true, loc.String()
+					return true, loc.String(), nil
 				}
 			}
 		}
 	}
 
-	// 2️⃣ 检测 200 页面 + MAGI 或 portal 页面
+	// 2) 检测 200 页面内脚本的 location.replace
 	if resp.StatusCode == 200 {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return false, ""
+			return false, "", err
 		}
 		html := string(body)
 
@@ -365,24 +342,23 @@ func TelecomPortalChecker(requestIP string, kAliveLink string) (bool, string) {
 
 			vm := otto.New()
 			var finalURL string
-			vm.Set("location", map[string]interface{}{
+			_ = vm.Set("location", map[string]interface{}{
 				"replace": func(call otto.FunctionCall) otto.Value {
-					s, _ := call.Argument(0).ToString()
-					finalURL = s
+					v, _ := call.Argument(0).ToString()
+					finalURL = v
 					return otto.Value{}
 				},
 			})
 
-			_, err := vm.Run(js)
-			if err == nil && finalURL != "" {
+			if _, err := vm.Run(js); err == nil && finalURL != "" {
 				for _, kw := range portalKeywords {
 					if strings.Contains(finalURL, kw) {
-						return true, finalURL
+						return true, finalURL, nil
 					}
 				}
 			}
 		}
 	}
 
-	return false, ""
+	return false, "", nil
 }
