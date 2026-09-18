@@ -90,11 +90,8 @@ func GetIPMAC(ip string) (string, error) {
 
 // GetKeyIfName 从配置中获取接口字符串，为空则为Auto
 func GetKeyIfName(instance config.ConfigInstance) string {
-	var keyIfName string
-	if keyIfName == "" {
-		keyIfName = "Auto"
-	} else {
-		keyIfName = instance.Interface
+	if instance.Interface == "" {
+		return "Auto"
 	}
-	return keyIfName
+	return instance.Interface
 }
